@@ -148,6 +148,12 @@ export default function DashboardScreen() {
           <Ionicons name="arrow-forward" size={16} color={colors.primary} />
         </TouchableOpacity>
 
+        <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate('Challenges')} style={[styles.challengeLink, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={[styles.challengeIcon, { backgroundColor: colors.accentSoft }]}><Ionicons name="trophy-outline" size={18} color={colors.accent} /></View>
+          <Text style={[styles.challengeLinkText, { color: colors.text }]}>Milestones & challenges</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+        </TouchableOpacity>
+
         <Text style={styles.sectionTitle}>Your journey this week</Text>
         <Text style={[styles.chartCaption, { color: colors.muted }]}>Daily completion, based on habits scheduled each day.</Text>
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -441,6 +447,9 @@ const styles = StyleSheet.create({
   suggestionIcon: { width: 40, height: 40, borderRadius: 13, backgroundColor: 'rgba(49,94,83,0.10)', alignItems: 'center', justifyContent: 'center' },
   suggestionTitle: { fontSize: 14, fontWeight: '800' },
   suggestionText: { fontSize: 12, lineHeight: 17, marginTop: 3 },
+  challengeLink: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 16, padding: 12, marginTop: -7, marginBottom: 16 },
+  challengeIcon: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  challengeLinkText: { flex: 1, fontSize: 13, fontWeight: '700' },
   matrixRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 7 },
   nameCol: { width: 120, fontSize: 13, fontWeight: '600' },
   matrixHeader: { fontSize: 10, fontWeight: '800', letterSpacing: 1 },

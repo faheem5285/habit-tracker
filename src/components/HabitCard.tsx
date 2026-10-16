@@ -18,7 +18,7 @@ function HabitCard({ habit, value, streak, onChange, onPress }: Props) {
   const { colors } = useSettings();
   const done = value >= habit.target;
   return (
-    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: done ? colors.primary + '45' : colors.border }]}>
       <View style={[styles.iconWrap, { backgroundColor: habit.color + '18' }]}>
         <HabitGlyph icon={habit.icon} category={habit.category} name={habit.name} />
       </View>
@@ -38,11 +38,7 @@ function HabitCard({ habit, value, streak, onChange, onPress }: Props) {
               <Text style={[styles.streak, { color: colors.muted }]}>{streak} day streak</Text>
             </>
           )}
-          {habit.type === 'count' && (
-            <Text style={[styles.target, { color: colors.muted }]}>
-              {value}/{habit.target} {habit.unit || 'today'}
-            </Text>
-          )}
+          {habit.type === 'count' && <Text style={[styles.target, { color: colors.textSecondary }]}>{value} of {habit.target} {habit.unit || 'today'}</Text>}
           {streak === 0 && habit.type === 'yesno' && (
             <Text style={[styles.target, { color: colors.muted }]}>Daily habit</Text>
           )}
@@ -57,7 +53,7 @@ function HabitCard({ habit, value, streak, onChange, onPress }: Props) {
             styles.checkButton,
             {
               borderColor: done ? colors.primary : colors.borderStrong,
-              backgroundColor: done ? colors.primary : colors.surface,
+              backgroundColor: done ? colors.primary : colors.surfaceMuted,
             },
           ]}
           onPress={() => onChange(habit.id, done ? 0 : 1)}
@@ -84,15 +80,15 @@ function HabitCard({ habit, value, streak, onChange, onPress }: Props) {
 export default memo(HabitCard);
 
 const styles = StyleSheet.create({
-  card: { flexDirection: 'row', alignItems: 'center', borderRadius: 18, borderWidth: 1, padding: 14, marginBottom: 9 },
-  iconWrap: { width: 46, height: 46, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  card: { flexDirection: 'row', alignItems: 'center', borderRadius: 20, borderWidth: 1, padding: 14, marginBottom: 10, minHeight: 78 },
+  iconWrap: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: 13 },
   icon: { fontSize: 24 },
   details: { flex: 1, minHeight: 44, justifyContent: 'center' },
-  name: { fontSize: 15, fontWeight: '700' },
-  meta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  name: { fontSize: 15, fontWeight: '700', letterSpacing: -0.2 },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5 },
   streak: { fontSize: 11, fontWeight: '500' },
   target: { fontSize: 11 },
-  checkButton: { width: 38, height: 38, borderRadius: 11, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginLeft: 10 },
-  counter: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  checkButton: { width: 42, height: 42, borderRadius: 15, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginLeft: 10 },
+  counter: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'transparent' },
   count: { fontSize: 17, fontWeight: '700', minWidth: 24, textAlign: 'center' },
 });

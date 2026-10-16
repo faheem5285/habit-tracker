@@ -107,30 +107,30 @@ export default function TodayScreen() {
         style={[
           styles.momentumCard,
           {
-            backgroundColor: colors.surface,
-            borderColor: colors.border,
+            backgroundColor: colors.navy,
+            borderColor: colors.navy,
           },
         ]}
       >
         <View style={styles.momentumTextWrap}>
           <View style={styles.momentumBadge}>
-            <Text style={[styles.momentumBadgeText, { color: colors.primary }]}>
+            <Text style={[styles.momentumBadgeText, { color: '#C8E2D1' }]}>
               TODAY&apos;S MOMENTUM
             </Text>
           </View>
 
           <View style={styles.momentumTitleRow}>
-            <Text style={styles.momentumTitle}>
+            <Text style={[styles.momentumTitle, { color: '#FFFFFF' }]}>
               {doneCount === totalCount && totalCount > 0
                 ? 'All habits completed!'
                 : `${doneCount} of ${totalCount} completed`}
             </Text>
             {doneCount === totalCount && totalCount > 0 && (
-              <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+              <Ionicons name="checkmark-circle" size={20} color="#A6D8B8" />
             )}
           </View>
 
-          <Text style={[styles.motivationText, { color: colors.textSecondary }]}>
+          <Text style={[styles.motivationText, { color: '#D7E4DB' }]}>
             {motivation.today(progress, totalCount)}
           </Text>
         </View>
@@ -139,9 +139,9 @@ export default function TodayScreen() {
           progress={progress}
           size={74}
           stroke={7}
-          color={colors.primary}
-          backgroundColor={colors.surfaceMuted}
-          textColor={colors.text}
+          color="#A6D8B8"
+          backgroundColor="#405249"
+          textColor="#FFFFFF"
         />
       </View>
 
@@ -338,7 +338,7 @@ export default function TodayScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
-  listContent: { paddingHorizontal: 18, paddingTop: 12, paddingBottom: 60 },
+  listContent: { paddingHorizontal: 20, paddingTop: 15, paddingBottom: 48 },
   headerContainer: { marginBottom: 12 },
   greetingRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   momentumTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
@@ -354,9 +354,9 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
   },
   greeting: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: '800',
-    letterSpacing: -0.6,
+    letterSpacing: -0.8,
     marginTop: 2,
   },
   dateText: {
@@ -376,13 +376,13 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   momentumCard: {
-    borderRadius: 22,
-    borderWidth: 1.5,
-    padding: 18,
+    borderRadius: 24,
+    borderWidth: 0,
+    padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 14,
+    marginBottom: 18,
   },
   momentumTextWrap: {
     flex: 1,
@@ -403,9 +403,9 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   motivationText: {
-    fontSize: 12,
-    lineHeight: 17,
-    marginTop: 4,
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 6,
   },
   filterScroll: {
     flexDirection: 'row',
@@ -414,9 +414,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   filterPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 12,
+    paddingHorizontal: 15,
+    paddingVertical: 9,
+    borderRadius: 14,
     borderWidth: 1,
   },
   filterPillText: {

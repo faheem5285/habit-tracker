@@ -347,6 +347,20 @@ export default function HabitFormScreen({ route, navigation }: Props) {
 
       {/* Day Schedule */}
       <Text style={styles.label}>Frequency Schedule</Text>
+      <View style={styles.frequencyPresets}>
+        {[
+          { label: 'Every day', value: [0, 1, 2, 3, 4, 5, 6] },
+          { label: 'Weekdays', value: [1, 2, 3, 4, 5] },
+          { label: 'Weekends', value: [0, 6] },
+        ].map((preset) => {
+          const selected = preset.value.length === days.length && preset.value.every((day) => days.includes(day));
+          return (
+            <TouchableOpacity key={preset.label} onPress={() => setDays(preset.value)} style={[styles.frequencyPreset, { backgroundColor: selected ? colors.primarySoft : colors.surface, borderColor: selected ? colors.primary : colors.border }]}>
+              <Text style={[styles.frequencyPresetText, { color: selected ? colors.primary : colors.textSecondary }]}>{preset.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
       <View style={styles.daysRow}>
         {DAY_LABELS.map((lbl, idx) => {
           const isSelected = days.includes(idx);
@@ -612,6 +626,9 @@ const styles = StyleSheet.create({
   typePillText: { fontSize: 12, fontWeight: '600' },
   countRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
   daysRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  frequencyPresets: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
+  frequencyPreset: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 13, paddingVertical: 9 },
+  frequencyPresetText: { fontSize: 12, fontWeight: '700' },
   dayChip: {
     width: 42,
     height: 44,

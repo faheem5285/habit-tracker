@@ -282,7 +282,7 @@ export default function HabitsScreen({ navigation }: Props) {
                 { color: activeTab === 'habits' ? colors.text : colors.muted },
               ]}
             >
-              My Habits ({activeHabits.length})
+              My habits ({activeHabits.length})
             </Text>
           </TouchableOpacity>
 
@@ -301,7 +301,7 @@ export default function HabitsScreen({ navigation }: Props) {
                 activeTab === 'templates' && { fontWeight: '700' },
               ]}
             >
-              Templates Library
+              Quick starts
             </Text>
           </TouchableOpacity>
         </View>
@@ -541,7 +541,7 @@ export default function HabitsScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 10 },
+  header: { paddingHorizontal: 20, paddingTop: 15, paddingBottom: 10 },
   headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -549,19 +549,19 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.5 },
-  title: { fontSize: 28, fontWeight: '800', letterSpacing: -0.6, marginTop: 2 },
+  title: { fontSize: 30, fontWeight: '800', letterSpacing: -0.8, marginTop: 2 },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 12,
+    paddingVertical: 11,
+    borderRadius: 14,
   },
   addBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
   segmentedBar: {
     flexDirection: 'row',
-    borderRadius: 14,
+    borderRadius: 15,
     padding: 4,
     marginBottom: 12,
   },
@@ -602,10 +602,11 @@ const styles = StyleSheet.create({
   habitCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 18,
-    borderWidth: 1.5,
-    padding: 14,
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 15,
     marginBottom: 10,
+    minHeight: 78,
   },
   habitMain: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center' },
   iconWrap: {

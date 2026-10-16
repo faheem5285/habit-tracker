@@ -97,8 +97,8 @@ function HabitTrackerModule() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.muted,
         tabBarLabel: ({ Today: 'Today', Habits: 'Habits', Analytics: 'Insights', Challenges: 'Awards', Settings: 'Settings' })[route.name],
-        tabBarLabelStyle: { fontSize: 10, fontWeight: '600', marginTop: 2 },
-        tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border, borderTopWidth: 1, elevation: 0, height: 68, paddingTop: 8, paddingBottom: 10 },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '700', marginTop: 3 },
+        tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth, elevation: 0, height: 70, paddingTop: 9, paddingBottom: 10 },
         tabBarHideOnKeyboard: true,
         tabBarItemStyle: { paddingVertical: 2 },
         headerShown: false,
@@ -107,7 +107,7 @@ function HabitTrackerModule() {
       <Tab.Screen name="Today" component={TodayScreen} />
       <Tab.Screen name="Habits" component={HabitDetailStack} />
       <Tab.Screen name="Analytics" component={DashboardScreen} />
-      <Tab.Screen name="Challenges" component={ChallengesScreen} />
+      <Tab.Screen name="Challenges" component={ChallengesScreen} options={{ tabBarButton: () => null }} />
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
     {switching && <View pointerEvents="auto" style={styles.switchOverlay}><LoaderScreen scheme={isDark ? 'dark' : 'light'} label="Opening screen" backgroundOpacity={0.8} /></View>}
@@ -150,7 +150,7 @@ export default function RootNavigator() {
       navigationRef.navigate('HabitTracker', { screen: 'Habits', params: { screen: 'HabitDetail', params: { habitId: id } } });
     }
   }}>
-    <AppStack.Navigator screenOptions={{ headerStyle: { backgroundColor: colors.surface }, headerTintColor: colors.text, headerTitleStyle: { fontWeight: '800' }, headerShadowVisible: false, contentStyle: { backgroundColor: colors.background } }}>
+    <AppStack.Navigator initialRouteName="HabitTracker" screenOptions={{ headerStyle: { backgroundColor: colors.surface }, headerTintColor: colors.text, headerTitleStyle: { fontWeight: '800' }, headerShadowVisible: false, contentStyle: { backgroundColor: colors.background } }}>
       <AppStack.Screen name="ModuleLauncher" component={ModuleLauncherScreen} options={{ title: 'Modules', headerShown: false }} />
       <AppStack.Screen name="HabitTracker" component={HabitTrackerModule} options={({ navigation }) => ({ title: 'Habit Tracker', headerRight: () => homeButton(navigation) })} />
       <AppStack.Screen name="LoanLedger" component={LoanLedgerScreen} options={{ title: 'Loan Ledger', headerShown: false }} />
