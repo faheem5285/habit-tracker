@@ -9,6 +9,8 @@ import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { hasLocalAppData, RECOVERY_STARTED_KEY } from './src/utils/storage';
 import { syncRecoveryData } from './src/utils/recovery';
+import { LoaderScreen } from './src/components/AppLoader';
+import { useColorScheme } from 'react-native';
 
 function Gate() {
   const { settings, loaded, isDark } = useSettings();
@@ -17,10 +19,10 @@ function Gate() {
     if (!loaded || !habitsLoaded) return;
     const timer = setTimeout(() => {
       void syncRecoveryData().catch((error) => console.warn('Recovery backup sync failed:', error));
-    }, 900);
+    }, 1500);
     return () => clearTimeout(timer);
-  }, [loaded, habitsLoaded, habits, logs, dailyNotes, settings]);
-  if (!loaded || !habitsLoaded) return null;
+  }, [loaded, habitsLoaded, habits, logs, dailyNotes]);
+  if (!loaded || !habitsLoaded) return <LoaderScreen scheme={isDark ? 'dark' : 'light'} />;
   return (
     <>
       {settings.hasOnboarded ? <RootNavigator /> : <OnboardingScreen />}
@@ -38,7 +40,8 @@ function StartupGate() {
       setChecking(false);
     });
   }, []);
-  if (checking) return null;
+  const system = useColorScheme();
+  if (checking) return <LoaderScreen scheme={system === 'dark' ? 'dark' : 'light'} label="Loading your habits" />;
   if (needsRecoveryChoice) {
     return (
       <SettingsProvider>

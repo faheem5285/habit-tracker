@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { View, Switch, TouchableOpacity, ScrollView, StyleSheet, Alert, Share } from 'react-native';
+import { ActivityIndicator, View, Switch, TouchableOpacity, ScrollView, StyleSheet, Alert, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import Constants from 'expo-constants';
@@ -13,7 +13,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RECOVERY_CODE_KEY } from '../utils/storage';
 import { createRecoveryCode, syncRecoveryData } from '../utils/recovery';
 
-type Option<T> = { label: string; value: T; icon?: string };
+type Option<T> = { label: string; value: T; icon?: keyof typeof Ionicons.glyphMap };
 
 function Chips<T extends string | number>({
   options,
@@ -48,6 +48,7 @@ function Chips<T extends string | number>({
             ]}
             onPress={() => onChange(option.value)}
           >
+            {option.icon && <Ionicons name={option.icon} size={15} color={colors.primary} />}
             <Text
               style={[
                 styles.chipText,
@@ -190,7 +191,7 @@ export default function SettingsScreen() {
         );
       } else {
         Alert.alert(
-          'Test Notification Sent! 🔔',
+          'Test Notification Sent!',
           'Your device was sent a test notification. Check your phone notification tray!'
         );
       }
@@ -370,9 +371,9 @@ export default function SettingsScreen() {
           <Chips
             colors={colors}
             options={[
-              { label: 'Dark Mode 🌙', value: 'dark' },
-              { label: 'Light Mode ☀️', value: 'light' },
-              { label: 'System ⚙️', value: 'system' },
+              { label: 'Dark Mode', value: 'dark', icon: 'moon-outline' },
+              { label: 'Light Mode', value: 'light', icon: 'sunny-outline' },
+              { label: 'System', value: 'system', icon: 'phone-portrait-outline' },
             ]}
             value={settings.theme}
             onChange={(value) => update({ theme: value })}
@@ -414,7 +415,9 @@ export default function SettingsScreen() {
               {recoveryCode ? 'Your app data syncs to a plain JSON Cloudinary backup.' : 'Create a code to restore your data after reinstall.'}
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+          {recoveryBusy
+            ? <ActivityIndicator size="small" color={colors.primary} />
+            : <Ionicons name="chevron-forward" size={18} color={colors.primary} />}
         </TouchableOpacity>
         <TouchableOpacity
           activeOpacity={0.8}
@@ -430,7 +433,7 @@ export default function SettingsScreen() {
               Save a JSON copy of all your habits and logs.
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+          <Ionicons name="chevron-forward" size={18} color={colors.primary} />
         </TouchableOpacity>
 
 
@@ -440,7 +443,7 @@ export default function SettingsScreen() {
           onPress={confirmReset}
         >
           <View style={[styles.leadingIcon, { backgroundColor: colors.dangerSoft }]}>
-            <Ionicons name="trash-outline" size={20} color={colors.danger} />
+            <Ionicons name="trash-outline" size={20} color={colors.primary} />
           </View>
           <View style={styles.settingCopy}>
             <Text style={[styles.settingTitle, { color: colors.danger }]}>Reset All Data</Text>
@@ -448,7 +451,7 @@ export default function SettingsScreen() {
               Delete all habits, check-ins, and journal history.
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+          <Ionicons name="chevron-forward" size={18} color={colors.primary} />
         </TouchableOpacity>
 
         {/* App Info Footer */}

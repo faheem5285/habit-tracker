@@ -39,6 +39,14 @@
           "backgroundColor": "#25634D"
         }
       ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Day by Day to access photos for loan records.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
       "expo-font"
     ],
     "extra": {

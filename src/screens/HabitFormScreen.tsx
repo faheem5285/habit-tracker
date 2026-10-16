@@ -4,24 +4,25 @@ import { Text, TextInput } from '../components/Themed';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { HabitsStackParams } from '../navigation/types';
 import { useHabits } from '../context/HabitContext';
-import { HabitType, TimeOfDay } from '../types';
+import { HabitType } from '../types';
 import { DAY_LABELS, formatTime } from '../utils/dates';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useSettings } from '../context/SettingsContext';
 import { Ionicons } from '@expo/vector-icons';
+import { HabitGlyph } from '../components/HabitGlyph';
 
-const ICONS = ['💧', '🏃', '💪', '📖', '🧘', '🕌', '😴', '🥗', '🎯', '✍️', '🧹', '💊', '🍎', '🚴', '💻', '🎨', '🚶', '🌱', '⭐', '🔥'];
+const ICONS = ['water-outline', 'walk-outline', 'barbell-outline', 'book-outline', 'leaf-outline', 'moon-outline', 'fitness-outline', 'restaurant-outline', 'checkmark-circle-outline', 'create-outline', 'home-outline', 'medkit-outline', 'nutrition-outline', 'bicycle-outline', 'laptop-outline', 'color-palette-outline', 'footsteps-outline', 'flower-outline', 'star-outline', 'flame-outline'] as const;
 
 const COLORS = [
-  '#4F46E5', // Indigo
-  '#06B6D4', // Cyan
-  '#10B981', // Emerald
-  '#F59E0B', // Amber
-  '#EF4444', // Red
+  '#25634D', // Primary Forest Green
+  '#24805D', // Success Green
+  '#288A91', // Cyan
+  '#59A37B', // Mint
+  '#C77C24', // Accent Amber
   '#8B5CF6', // Purple
-  '#EC4899', // Pink
-  '#F97316', // Orange
-  '#14B8A6', // Teal
+  '#CF6573', // Rose
+  '#EF4444', // Danger Red
+  '#20382D', // Deep Navy
   '#64748B', // Slate
 ];
 
@@ -36,6 +37,10 @@ const CATEGORIES = [
 
 const PRESET_TIMES = ['08:00', '12:00', '18:00', '21:00'];
 
+const formatScheduledReminder = (value: string) => new Date(value).toLocaleString(undefined, {
+  month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+});
+
 type Props = NativeStackScreenProps<HabitsStackParams, 'HabitForm'>;
 
 export default function HabitFormScreen({ route, navigation }: Props) {
@@ -43,26 +48,25 @@ export default function HabitFormScreen({ route, navigation }: Props) {
   const { colors, settings } = useSettings();
   const habitId = route.params?.habitId;
   const existing = habits.find((h) => h.id === habitId);
+  const template = route.params?.template;
 
-  const [name, setName] = useState(existing?.name ?? '');
-  const [icon, setIcon] = useState(existing?.icon ?? ICONS[0]);
-  const [color, setColor] = useState(existing?.color ?? COLORS[0]);
-  const [category, setCategory] = useState(existing?.category ?? 'health');
-  const [type, setType] = useState<HabitType>(existing?.type ?? 'yesno');
-  const [target, setTarget] = useState(String(existing?.target ?? 5));
-  const [unit, setUnit] = useState(existing?.unit ?? (type === 'count' ? 'times' : ''));
-  const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>(existing?.timeOfDay ?? 'any');
-  const [days, setDays] = useState<number[]>(existing?.days ?? [0, 1, 2, 3, 4, 5, 6]);
-  const [reminders, setReminders] = useState<string[]>(existing?.reminderTimes ?? []);
+  const [name, setName] = useState(existing?.name ?? template?.name ?? '');
+  const [icon, setIcon] = useState(existing?.icon ?? template?.icon ?? ICONS[0]);
+  const [color, setColor] = useState(existing?.color ?? template?.color ?? colors.primary);
+  const [category, setCategory] = useState(existing?.category ?? template?.category ?? 'health');
+  const [type, setType] = useState<HabitType>(existing?.type ?? template?.type ?? 'yesno');
+  const [target, setTarget] = useState(String(existing?.target ?? template?.target ?? 5));
+  const [unit, setUnit] = useState(existing?.unit ?? template?.unit ?? '');
+  const [days, setDays] = useState<number[]>(existing?.days ?? template?.days ?? [0, 1, 2, 3, 4, 5, 6]);
+  const [reminders, setReminders] = useState<string[]>(existing?.reminderTimes ?? template?.reminderTimes ?? []);
+  const [scheduledReminders, setScheduledReminders] = useState<string[]>(existing?.scheduledReminders ?? template?.scheduledReminders ?? []);
   const [showPicker, setShowPicker] = useState(false);
   const [pendingTime, setPendingTime] = useState(new Date());
+  const [futurePickerMode, setFuturePickerMode] = useState<'date' | 'time' | null>(null);
+  const [futureReminder, setFutureReminder] = useState(() => new Date(Date.now() + 60 * 60 * 1000));
 
   const toggleDay = (d: number) =>
     setDays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort()));
-
-  const selectEveryDay = () => setDays([0, 1, 2, 3, 4, 5, 6]);
-  const selectWeekdays = () => setDays([1, 2, 3, 4, 5]);
-  const selectWeekends = () => setDays([0, 6]);
 
   const addTimeStr = (t: string) => {
     setReminders((prev) => (prev.includes(t) ? prev : [...prev, t].sort()));
@@ -79,6 +83,40 @@ export default function HabitFormScreen({ route, navigation }: Props) {
       if (event.type === 'set' && date) addTimeFromDate(date);
     } else if (date) {
       setPendingTime(date);
+    }
+  };
+
+  const addFutureReminder = (date: Date) => {
+    if (date.getTime() <= Date.now()) {
+      Alert.alert('Choose a future time', 'The reminder date and time must be later than now.');
+      return;
+    }
+    const value = date.toISOString();
+    setScheduledReminders((previous) => previous.includes(value) ? previous : [...previous, value].sort());
+    setFuturePickerMode(null);
+  };
+
+  const onFuturePickerChange = (event: DateTimePickerEvent, date?: Date) => {
+    if (Platform.OS === 'android') {
+      if (event.type !== 'set' || !date) {
+        setFuturePickerMode(null);
+        return;
+      }
+      if (futurePickerMode === 'date') {
+        setFutureReminder((current) => {
+          const next = new Date(current);
+          next.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+          return next;
+        });
+        setFuturePickerMode('time');
+      } else {
+        const next = new Date(futureReminder);
+        next.setHours(date.getHours(), date.getMinutes(), 0, 0);
+        setFutureReminder(next);
+        addFutureReminder(next);
+      }
+    } else if (date) {
+      setFutureReminder(date);
     }
   };
 
@@ -104,9 +142,9 @@ export default function HabitFormScreen({ route, navigation }: Props) {
       type,
       target: targetNum,
       unit: unit.trim() || (type === 'count' ? 'times' : 'times'),
-      timeOfDay,
       days,
       reminderTimes: reminders,
+      scheduledReminders,
     };
 
     try {
@@ -133,17 +171,17 @@ export default function HabitFormScreen({ route, navigation }: Props) {
           styles.previewCard,
           {
             backgroundColor: colors.surface,
-            borderColor: color + '55',
+            borderColor: colors.border,
           },
         ]}
       >
-        <View style={[styles.previewIconWrap, { backgroundColor: color + '1A', borderColor: color + '33' }]}>
-          <Text style={{ fontSize: 28 }}>{icon}</Text>
+        <View style={[styles.previewIconWrap, { backgroundColor: color + '1A', borderColor: colors.border }]}>
+          <HabitGlyph icon={icon} category={category} name={name} size={28} color={color} />
         </View>
         <View style={{ flex: 1 }}>
           <View style={styles.previewBadgeRow}>
             <Text style={[styles.previewCategory, { color }]}>
-              {category.toUpperCase()} · {timeOfDay.toUpperCase()}
+              {category.toUpperCase()}
             </Text>
           </View>
           <Text style={styles.previewName}>{name.trim() || 'Habit Name'}</Text>
@@ -202,22 +240,29 @@ export default function HabitFormScreen({ route, navigation }: Props) {
       {/* Icon Picker */}
       <Text style={styles.label}>Choose Icon</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.iconScroll}>
-        {ICONS.map((i) => (
-          <TouchableOpacity
-            key={i}
-            onPress={() => setIcon(i)}
-            style={[
-              styles.iconBox,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-              icon === i && {
-                borderColor: color,
-                backgroundColor: color + '22',
-              },
-            ]}
-          >
-            <Text style={{ fontSize: 24 }}>{i}</Text>
-          </TouchableOpacity>
-        ))}
+        {ICONS.map((i) => {
+          const isSelected = icon === i;
+          return (
+            <TouchableOpacity
+              key={i}
+              onPress={() => setIcon(i)}
+              style={[
+                styles.iconBox,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+                isSelected && {
+                  borderColor: colors.primary,
+                  backgroundColor: colors.primarySoft,
+                },
+              ]}
+            >
+              <Ionicons
+                name={i as keyof typeof Ionicons.glyphMap}
+                size={24}
+                color={isSelected ? colors.primary : colors.textSecondary}
+              />
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
 
       {/* Color Accent */}
@@ -230,7 +275,7 @@ export default function HabitFormScreen({ route, navigation }: Props) {
             style={[
               styles.colorDot,
               { backgroundColor: c },
-              color === c && styles.colorDotSelected,
+              color === c && [styles.colorDotSelected, { borderColor: colors.borderStrong }],
             ]}
           >
             {color === c && <Ionicons name="checkmark" size={16} color="#FFF" />}
@@ -300,48 +345,8 @@ export default function HabitFormScreen({ route, navigation }: Props) {
         </View>
       )}
 
-      {/* Time of Day */}
-      <Text style={styles.label}>Preferred Time of Day</Text>
-      <View style={styles.typeRow}>
-        {(['any', 'morning', 'afternoon', 'evening'] as TimeOfDay[]).map((t) => {
-          const isSelected = timeOfDay === t;
-          return (
-            <TouchableOpacity
-              key={t}
-              style={[
-                styles.timePill,
-                {
-                  backgroundColor: isSelected ? colors.primary : colors.surface,
-                  borderColor: isSelected ? colors.primary : colors.border,
-                },
-              ]}
-              onPress={() => setTimeOfDay(t)}
-            >
-              <Text
-                style={[
-                  styles.timePillText,
-                  { color: isSelected ? '#FFF' : colors.textSecondary },
-                  isSelected && { fontWeight: '700' },
-                ]}
-              >
-                {t.charAt(0).toUpperCase() + t.slice(1)}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
       {/* Day Schedule */}
-      <View style={styles.scheduleHeaderRow}>
-        <Text style={styles.label}>Frequency Schedule</Text>
-        <View style={styles.presetDaysRow}>
-          <TouchableOpacity onPress={selectEveryDay}><Text style={[styles.presetDayText, { color: colors.primary }]}>Daily</Text></TouchableOpacity>
-          <Text style={{ color: colors.muted }}>·</Text>
-          <TouchableOpacity onPress={selectWeekdays}><Text style={[styles.presetDayText, { color: colors.primary }]}>Weekdays</Text></TouchableOpacity>
-          <Text style={{ color: colors.muted }}>·</Text>
-          <TouchableOpacity onPress={selectWeekends}><Text style={[styles.presetDayText, { color: colors.primary }]}>Weekends</Text></TouchableOpacity>
-        </View>
-      </View>
+      <Text style={styles.label}>Frequency Schedule</Text>
       <View style={styles.daysRow}>
         {DAY_LABELS.map((lbl, idx) => {
           const isSelected = days.includes(idx);
@@ -351,8 +356,8 @@ export default function HabitFormScreen({ route, navigation }: Props) {
               style={[
                 styles.dayChip,
                 {
-                  backgroundColor: isSelected ? color : colors.surface,
-                  borderColor: isSelected ? color : colors.border,
+                  backgroundColor: isSelected ? colors.primary : colors.surface,
+                  borderColor: isSelected ? colors.primary : colors.border,
                 },
               ]}
               onPress={() => toggleDay(idx)}
@@ -372,11 +377,12 @@ export default function HabitFormScreen({ route, navigation }: Props) {
       </View>
 
       {/* Reminders & Notifications */}
-      <Text style={styles.label}>Reminders & Notifications 🔔</Text>
+      <Text style={styles.label}>Reminders & Notifications</Text>
       {!settings.notificationsEnabled && (
-        <Text style={[styles.notifWarning, { color: colors.accent }]}>
-          ⚠️ Reminders are currently disabled in Settings.
-        </Text>
+        <View style={[styles.reminderWarning, { backgroundColor: colors.primarySoft, borderColor: colors.border }]}>
+          <Ionicons name="alert-circle-outline" size={16} color={colors.primary} />
+          <Text style={[styles.notifWarning, { color: colors.primary }]}>Reminders are currently disabled in Settings.</Text>
+        </View>
       )}
 
       {/* Quick Reminder Time Presets */}
@@ -389,8 +395,8 @@ export default function HabitFormScreen({ route, navigation }: Props) {
               style={[
                 styles.presetTimeChip,
                 {
-                  backgroundColor: isAdded ? color : colors.surface,
-                  borderColor: isAdded ? color : colors.border,
+                  backgroundColor: isAdded ? colors.primary : colors.surface,
+                  borderColor: isAdded ? colors.primary : colors.border,
                 },
               ]}
               onPress={() => {
@@ -424,10 +430,32 @@ export default function HabitFormScreen({ route, navigation }: Props) {
       {reminders.length > 0 && (
         <View style={styles.activeRemindersRow}>
           {reminders.map((t) => (
-            <View key={t} style={[styles.activeReminderTag, { backgroundColor: color }]}>
+            <View key={t} style={[styles.activeReminderTag, { backgroundColor: colors.primary }]}>
               <Ionicons name="notifications" size={12} color="#FFF" />
               <Text style={styles.activeReminderText}>{formatTime(t)}</Text>
               <TouchableOpacity onPress={() => setReminders(reminders.filter((x) => x !== t))}>
+                <Ionicons name="close-circle" size={14} color="#FFF" />
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+      )}
+
+      <TouchableOpacity
+        style={[styles.customTimeChip, styles.futureReminderButton, { backgroundColor: colors.surfaceMuted, borderColor: colors.border }]}
+        onPress={() => setFuturePickerMode('date')}
+      >
+        <Ionicons name="calendar-outline" size={15} color={colors.primary} />
+        <Text style={[styles.customTimeText, { color: colors.primary }]}>+ Future date & time</Text>
+      </TouchableOpacity>
+
+      {scheduledReminders.length > 0 && (
+        <View style={styles.activeRemindersRow}>
+          {scheduledReminders.map((value) => (
+            <View key={value} style={[styles.activeReminderTag, { backgroundColor: colors.primary }]}>
+              <Ionicons name="notifications" size={12} color="#FFF" />
+              <Text style={styles.activeReminderText}>{formatScheduledReminder(value)}</Text>
+              <TouchableOpacity onPress={() => setScheduledReminders((previous) => previous.filter((item) => item !== value))}>
                 <Ionicons name="close-circle" size={14} color="#FFF" />
               </TouchableOpacity>
             </View>
@@ -445,7 +473,7 @@ export default function HabitFormScreen({ route, navigation }: Props) {
       )}
       {showPicker && Platform.OS === 'ios' && (
         <TouchableOpacity
-          style={[styles.iosDoneTimeBtn, { backgroundColor: color }]}
+          style={[styles.iosDoneTimeBtn, { backgroundColor: colors.primary }]}
           onPress={() => {
             addTimeFromDate(pendingTime);
             setShowPicker(false);
@@ -455,13 +483,50 @@ export default function HabitFormScreen({ route, navigation }: Props) {
         </TouchableOpacity>
       )}
 
+      {futurePickerMode && Platform.OS === 'android' && (
+        <DateTimePicker
+          value={futureReminder}
+          mode={futurePickerMode}
+          display="default"
+          minimumDate={futurePickerMode === 'date' ? new Date() : undefined}
+          onChange={onFuturePickerChange}
+        />
+      )}
+
+      {futurePickerMode && Platform.OS === 'ios' && (
+        <View style={[styles.futurePickerCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.subLabel, { color: colors.textSecondary }]}>Choose reminder date and time</Text>
+          <DateTimePicker
+            value={futureReminder}
+            mode="date"
+            display="spinner"
+            minimumDate={new Date()}
+            onChange={(_, date) => { if (date) setFutureReminder(date); }}
+          />
+          <DateTimePicker
+            value={futureReminder}
+            mode="time"
+            display="spinner"
+            onChange={(_, date) => { if (date) setFutureReminder(date); }}
+          />
+          <View style={styles.futurePickerActions}>
+            <TouchableOpacity onPress={() => setFuturePickerMode(null)}>
+              <Text style={[styles.cancelPickerText, { color: colors.muted }]}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.futureConfirmButton, { backgroundColor: colors.primary }]} onPress={() => addFutureReminder(futureReminder)}>
+              <Text style={styles.saveBtnText}>Add reminder</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {/* Save Button */}
       <TouchableOpacity
         activeOpacity={0.85}
-        style={[styles.saveBtn, { backgroundColor: color }]}
+        style={[styles.saveBtn, { backgroundColor: colors.primary }]}
         onPress={save}
       >
-        <Text style={styles.saveBtnText}>Save Habit</Text>
+        <Text style={styles.saveBtnText}>{habitId ? 'Save Changes' : template ? 'Add Habit' : 'Save Habit'}</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()}>
@@ -546,23 +611,6 @@ const styles = StyleSheet.create({
   },
   typePillText: { fontSize: 12, fontWeight: '600' },
   countRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
-  timePill: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  timePillText: { fontSize: 11, fontWeight: '600' },
-  scheduleHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  presetDaysRow: { flexDirection: 'row', gap: 6, alignItems: 'center' },
-  presetDayText: { fontSize: 12, fontWeight: '700' },
   daysRow: { flexDirection: 'row', justifyContent: 'space-between' },
   dayChip: {
     width: 42,
@@ -573,7 +621,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dayChipText: { fontSize: 12, fontWeight: '600' },
-  notifWarning: { fontSize: 12, marginBottom: 8 },
+  cancelPickerText: { fontSize: 12, fontWeight: '700' },
+  reminderWarning: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10, padding: 10, borderRadius: 12, borderWidth: 1 },
+  notifWarning: { fontSize: 12 },
   presetTimeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   presetTimeChip: {
     paddingHorizontal: 12,
@@ -592,6 +642,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   customTimeText: { fontSize: 12, fontWeight: '700' },
+  futureReminderButton: { alignSelf: 'flex-start', marginTop: 10 },
+  futurePickerCard: { borderWidth: 1, borderRadius: 14, padding: 12, marginTop: 12 },
+  futurePickerActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
+  futureConfirmButton: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10 },
   activeRemindersRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
   activeReminderTag: {
     flexDirection: 'row',

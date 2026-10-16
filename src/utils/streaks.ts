@@ -63,19 +63,31 @@ export function currentStreak(h: Habit, logs: Log[], today: Date = new Date()): 
 export const createdKey = (h: Habit) => toDateKey(new Date(h.createdAt));
 
 export function bestStreak(h: Habit, logs: Log[], today: Date = new Date()): number {
-  const dates = logs.filter((l) => l.habitId === h.id).map((l) => l.date).sort();
-  const start = dates.length && dates[0] < createdKey(h) ? dates[0] : createdKey(h);
   const todayStr = toDateKey(today);
+  const start = createdKey(h);
+  const completedDates = [...new Set(logs
+    .filter((log) => log.habitId === h.id && log.value >= h.target && log.date >= start && log.date <= todayStr)
+    .map((log) => log.date)
+    .filter((date) => isScheduled(h, fromDateKey(date))))].sort();
   let best = 0;
   let run = 0;
-  for (let d = fromDateKey(start); toDateKey(d) <= todayStr; d = addDays(d, 1)) {
-    if (!isScheduled(h, d)) continue;
-    if (isDone(h, logs, toDateKey(d))) {
-      run++;
-      best = Math.max(best, run);
-    } else if (toDateKey(d) !== todayStr) run = 0;
+  let previous: string | undefined;
+  for (const date of completedDates) {
+    if (previous && nextScheduledDate(previous, h) === date) run++;
+    else run = 1;
+    best = Math.max(best, run);
+    previous = date;
   }
   return best;
+}
+
+function nextScheduledDate(date: string, habit: Habit): string | undefined {
+  let day = fromDateKey(date);
+  for (let offset = 0; offset < 7; offset++) {
+    day = addDays(day, 1);
+    if (isScheduled(habit, day)) return toDateKey(day);
+  }
+  return undefined;
 }
 
 /** Current run of scheduled days on which every active habit reached its target. */

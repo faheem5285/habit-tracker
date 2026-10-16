@@ -2,6 +2,7 @@ import { memo } from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Text } from './Themed';
 import { Ionicons } from '@expo/vector-icons';
+import { HabitGlyph } from './HabitGlyph';
 import { Habit } from '../types';
 import { useSettings } from '../context/SettingsContext';
 
@@ -19,7 +20,7 @@ function HabitCard({ habit, value, streak, onChange, onPress }: Props) {
   return (
     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <View style={[styles.iconWrap, { backgroundColor: habit.color + '18' }]}>
-        <Text style={styles.icon}>{habit.icon}</Text>
+        <HabitGlyph icon={habit.icon} category={habit.category} name={habit.name} />
       </View>
       <TouchableOpacity
         accessibilityRole={onPress ? 'button' : undefined}
@@ -33,7 +34,7 @@ function HabitCard({ habit, value, streak, onChange, onPress }: Props) {
         <View style={styles.meta}>
           {streak > 0 && (
             <>
-              <Ionicons name="flame-outline" size={13} color={colors.accent} />
+              <Ionicons name="flame-outline" size={13} color={colors.primary} />
               <Text style={[styles.streak, { color: colors.muted }]}>{streak} day streak</Text>
             </>
           )}
@@ -49,17 +50,24 @@ function HabitCard({ habit, value, streak, onChange, onPress }: Props) {
       </TouchableOpacity>
       {habit.type === 'yesno' ? (
         <TouchableOpacity
-          accessibilityRole="button"
-          accessibilityLabel={`${done ? 'Mark' : 'Complete'} ${habit.name}`}
-          style={[styles.checkButton, { borderColor: done ? colors.primary : colors.border, backgroundColor: done ? colors.primary : colors.surface }]}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: done }}
+          accessibilityLabel={`${done ? 'Mark incomplete' : 'Complete'} ${habit.name}`}
+          style={[
+            styles.checkButton,
+            {
+              borderColor: done ? colors.primary : colors.borderStrong,
+              backgroundColor: done ? colors.primary : colors.surface,
+            },
+          ]}
           onPress={() => onChange(habit.id, done ? 0 : 1)}
         >
-          {done && <Ionicons name="checkmark" size={19} color={colors.surface} />}
+          {done && <Ionicons name="checkmark" size={20} color="#FFFFFF" />}
         </TouchableOpacity>
       ) : (
         <View style={styles.counter}>
           <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Decrease ${habit.name}`} onPress={() => onChange(habit.id, Math.max(0, value - 1))} hitSlop={8}>
-            <Ionicons name="remove-circle-outline" size={29} color={colors.muted} />
+            <Ionicons name="remove-circle-outline" size={29} color={colors.primary} />
           </TouchableOpacity>
           <Text style={[styles.count, { color: done ? colors.primary : colors.text }]}>
             {value}
@@ -84,7 +92,7 @@ const styles = StyleSheet.create({
   meta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   streak: { fontSize: 11, fontWeight: '500' },
   target: { fontSize: 11 },
-  checkButton: { width: 42, height: 42, borderRadius: 14, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginLeft: 10 },
+  checkButton: { width: 38, height: 38, borderRadius: 11, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginLeft: 10 },
   counter: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   count: { fontSize: 17, fontWeight: '700', minWidth: 24, textAlign: 'center' },
 });

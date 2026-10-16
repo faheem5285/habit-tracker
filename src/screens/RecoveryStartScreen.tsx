@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text } from '../components/Themed';
 import { restoreWithRecoveryCode } from '../utils/recovery';
@@ -31,7 +31,8 @@ export default function RecoveryStartScreen({ onStartFresh, onRestored }: { onSt
           accessibilityLabel="Recovery code"
         />
         <TouchableOpacity style={[styles.button, busy && styles.disabled]} onPress={restore} disabled={busy}>
-          <Text style={styles.buttonText}>{busy ? 'Restoring…' : 'Restore my data'}</Text>
+          {busy && <ActivityIndicator size="small" color="#fff" />}
+          <Text style={styles.buttonText}>{busy ? 'Restoring your data' : 'Restore my data'}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.secondary} onPress={onStartFresh} disabled={busy}>
           <Text style={styles.secondaryText}>Start with a new account</Text>

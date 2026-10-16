@@ -11,6 +11,7 @@ import { useSettings } from '../context/SettingsContext';
 import { DAY_LABELS, addDays, formatTime, fromDateKey, toDateKey, todayKey } from '../utils/dates';
 import { bestStreak, completionRate, createdKey, currentStreak, getValue, isDone, isScheduled } from '../utils/streaks';
 import { motivation } from '../utils/motivationalContent';
+import { HabitGlyph } from '../components/HabitGlyph';
 
 type Props = NativeStackScreenProps<HabitsStackParams, 'HabitDetail'>;
 
@@ -75,17 +76,22 @@ export default function HabitDetailScreen({ route, navigation }: Props) {
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
       <View style={[styles.header, { backgroundColor: colors.primarySoft, borderColor: colors.border }]}>
         <View style={[styles.iconTile, { backgroundColor: colors.surface }]}>
-          <Text style={{ fontSize: 31 }}>{habit.icon}</Text>
+          <HabitGlyph icon={habit.icon} category={habit.category} size={31} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.name}>{habit.name}</Text>
           <Text style={[styles.sub, { color: colors.muted }]}>
             {habit.type === 'count' ? `${habit.target} a day` : 'One thoughtful check-in'} · {schedule}
           </Text>
-          {habit.reminderTimes.length > 0 && (
+          {((habit.reminderTimes?.length ?? 0) > 0 || (habit.scheduledReminders?.length ?? 0) > 0) && (
             <View style={styles.reminder}>
               <Ionicons name="notifications-outline" size={13} color={colors.primary} />
-              <Text style={[styles.sub, { color: colors.primary }]}>{habit.reminderTimes.map(formatTime).join(', ')}</Text>
+              <Text style={[styles.sub, { color: colors.primary }]} numberOfLines={2}>
+                {[
+                  ...(habit.reminderTimes ?? []).map(formatTime),
+                  ...(habit.scheduledReminders ?? []).map((value) => new Date(value).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })),
+                ].join(' · ')}
+              </Text>
             </View>
           )}
         </View>
@@ -93,13 +99,16 @@ export default function HabitDetailScreen({ route, navigation }: Props) {
 
       <View style={styles.grid}>
         {[
-          { label: 'Current streak', value: `🔥 ${currentStreak(habit, logs, now)}` },
+          { label: 'Current streak', value: String(currentStreak(habit, logs, now)), icon: 'flame-outline' },
           { label: 'Best streak', value: String(bestStreak(habit, logs, now)) },
           { label: '30-day rate', value: `${Math.round(completionRate(habit, logs) * 100)}%` },
           { label: 'Total completions', value: String(total) },
         ].map((c) => (
           <View key={c.label} style={[styles.stat, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={styles.statValue}>{c.value}</Text>
+            <View style={styles.statValueRow}>
+              {c.icon && <Ionicons name={c.icon as keyof typeof Ionicons.glyphMap} size={17} color={colors.primary} />}
+              <Text style={styles.statValue}>{c.value}</Text>
+            </View>
             <Text style={[styles.statLabel, { color: colors.muted }]}>{c.label}</Text>
           </View>
         ))}
@@ -116,13 +125,13 @@ export default function HabitDetailScreen({ route, navigation }: Props) {
         <Text style={styles.section}>History</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TouchableOpacity onPress={() => shift(-1)} hitSlop={10}>
-            <Ionicons name="chevron-back" size={22} color={colors.muted} />
+            <Ionicons name="chevron-back" size={22} color={colors.primary} />
           </TouchableOpacity>
           <Text style={{ marginHorizontal: 8, fontWeight: '600' }}>
             {new Date(cursor.y, cursor.m).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
           </Text>
           <TouchableOpacity onPress={() => shift(1)} hitSlop={10}>
-            <Ionicons name="chevron-forward" size={22} color={colors.muted} />
+            <Ionicons name="chevron-forward" size={22} color={colors.primary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -163,7 +172,7 @@ export default function HabitDetailScreen({ route, navigation }: Props) {
               : 'Keep your history safe. You can return anytime.'}
           </Text>
         </View>
-        <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+        <Ionicons name="chevron-forward" size={18} color={colors.primary} />
       </TouchableOpacity>
 
       <View style={styles.actions}>
@@ -191,6 +200,7 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   stat: { width: '48%', borderWidth: 1, borderRadius: 20, padding: 16, marginBottom: 10 },
   statValue: { fontSize: 24, fontWeight: '800' },
+  statValueRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   statLabel: { fontSize: 11, color: '#6b7280', marginTop: 4 },
   section: { fontSize: 16, fontWeight: '700', marginTop: 10, marginBottom: 8 },
   sectionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },

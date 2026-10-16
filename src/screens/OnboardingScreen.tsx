@@ -6,12 +6,14 @@ import { useHabits, HabitInput } from '../context/HabitContext';
 import { useSettings } from '../context/SettingsContext';
 import { ensurePermission } from '../utils/notifications';
 import { appCopy } from '../utils/motivationalContent';
+import { Ionicons } from '@expo/vector-icons';
+import { HabitGlyph } from '../components/HabitGlyph';
 
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 const STARTERS: HabitInput[] = [
-  { name: 'Gym', icon: '💪', color: '#4f46e5', type: 'yesno', target: 1, days: ALL_DAYS, reminderTimes: [] },
-  { name: 'Pray 5 times', icon: '🕌', color: '#16a34a', type: 'count', target: 5, days: ALL_DAYS, reminderTimes: [] },
-  { name: 'Read book', icon: '📖', color: '#ea580c', type: 'yesno', target: 1, days: ALL_DAYS, reminderTimes: [] },
+  { name: 'Gym', icon: 'barbell-outline', color: '#4f46e5', category: 'fitness', type: 'yesno', target: 1, days: ALL_DAYS, reminderTimes: [] },
+  { name: 'Pray 5 times', icon: 'moon-outline', color: '#16a34a', category: 'mind', type: 'count', target: 5, days: ALL_DAYS, reminderTimes: [] },
+  { name: 'Read book', icon: 'book-outline', color: '#ea580c', category: 'learning', type: 'yesno', target: 1, days: ALL_DAYS, reminderTimes: [] },
 ];
 const SLIDES = appCopy.onboarding;
 
@@ -47,14 +49,14 @@ export default function OnboardingScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       <View style={styles.brand}>
         <View style={[styles.brandIcon, { backgroundColor: colors.primarySoft }]}>
-          <Text style={{ fontSize: 18 }}>🌱</Text>
+          <Ionicons name="calendar-outline" size={20} color={colors.primary} />
         </View>
         <Text style={[styles.brandName, { color: colors.muted }]}>DAY BY DAY</Text>
       </View>
       {step < 3 ? (
         <View style={[styles.center, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={[styles.illustration, { backgroundColor: colors.primarySoft }]}>
-            <Text style={styles.emoji}>{slide.emoji}</Text>
+            <Ionicons name={(["sparkles-outline", "checkmark-circle-outline", "notifications-outline"] as const)[step]} size={48} color={colors.primary} />
           </View>
           <Text style={[styles.kicker, { color: colors.primary }]}>SMALL STEPS. REAL MOMENTUM.</Text>
           <Text style={styles.title}>{slide.title}</Text>
@@ -81,8 +83,9 @@ export default function OnboardingScreen() {
                 style={[styles.pick, { backgroundColor: colors.surface, borderColor: colors.border }, picked.includes(i) && { borderColor: colors.primary, backgroundColor: colors.primarySoft }]}
                 onPress={() => toggle(i)}
               >
-                <Text style={styles.pickText}>{s.icon}  {s.name}</Text>
-                {picked.includes(i) && <Text style={{ color: s.color, fontSize: 18 }}>✓</Text>}
+                <HabitGlyph icon={s.icon} category={i === 0 ? "fitness" : i === 1 ? "mind" : "learning"} size={20} />
+                <Text style={styles.pickText}>{s.name}</Text>
+                {picked.includes(i) && <Ionicons name="checkmark" size={18} color={colors.primary} />}
               </TouchableOpacity>
             ))}
           </View>
@@ -130,7 +133,6 @@ const styles = StyleSheet.create({
   brandName: { fontSize: 10, fontWeight: '700', letterSpacing: 1.7 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 28, borderWidth: 1, padding: 24 },
   illustration: { width: 116, height: 116, borderRadius: 36, alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
-  emoji: { fontSize: 52 },
   kicker: { fontSize: 9, fontWeight: '700', letterSpacing: 1.5, marginBottom: 10 },
   title: { fontSize: 27, lineHeight: 33, fontWeight: '800', textAlign: 'center', letterSpacing: -0.7 },
   body: { fontSize: 14, textAlign: 'center', lineHeight: 21, marginTop: 10, maxWidth: 275 },

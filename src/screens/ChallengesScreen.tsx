@@ -10,6 +10,9 @@ import { bestPerfectDayStreak, bestStreak, dayStat, isDone, perfectDayStreak } f
 import { addDays, toDateKey } from '../utils/dates';
 import { motivation } from '../utils/motivationalContent';
 
+const challengeGlyphs = ['checkmark-done-outline', 'calendar-outline', 'trophy-outline', 'diamond-outline'] as const;
+const badgeGlyphs = ['star-outline', 'flame-outline', 'flash-outline', 'locate-outline', 'ribbon-outline', 'diamond-outline', 'checkmark-circle-outline', 'trending-up-outline', 'sparkles-outline', 'walk-outline', 'list-outline', 'calendar-outline'] as const;
+
 export default function ChallengesScreen() {
   const isFocused = useIsFocused();
   const { habits, logs } = useHabits();
@@ -166,7 +169,7 @@ export default function ChallengesScreen() {
         </View>
 
         <View style={[styles.streakCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={[styles.streakIcon, { backgroundColor: colors.successSoft }]}><Ionicons name="checkmark-done-outline" size={22} color={colors.success} /></View>
+          <View style={[styles.streakIcon, { backgroundColor: colors.successSoft }]}><Ionicons name="checkmark-done-outline" size={22} color={colors.primary} /></View>
           <View style={{ flex: 1 }}>
             <Text style={styles.streakTitle}>100% day streak</Text>
             <Text style={[styles.streakText, { color: colors.muted }]}>{dailyPerfectStreak ? `${dailyPerfectStreak} scheduled days in a row at 100%.` : 'Complete every habit scheduled today to begin your streak.'}</Text>
@@ -209,8 +212,8 @@ export default function ChallengesScreen() {
               ]}
             >
               <View style={styles.challengeTop}>
-                <View style={[styles.challengeIconWrap, { backgroundColor: c.color + '1A' }]}>
-                  <Text style={{ fontSize: 24 }}>{c.icon}</Text>
+                <View style={[styles.challengeIconWrap, { backgroundColor: colors.primarySoft }]}>
+                  <Ionicons name={challengeGlyphs[Number(c.id.slice(1)) - 1]} size={24} color={colors.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.challengePeriod, { color: c.color }]}>{c.timeframe}</Text>
@@ -257,7 +260,7 @@ export default function ChallengesScreen() {
                 },
               ]}
             >
-              <Text style={styles.badgeEmoji}>{b.icon}</Text>
+              <Ionicons name={badgeGlyphs[Number(b.id.slice(1)) - 1]} size={26} color={colors.primary} />
               <Text style={styles.badgeTitle} numberOfLines={1}>{b.title}</Text>
               <Text style={[styles.badgeDesc, { color: colors.muted }]} numberOfLines={2}>
                 {b.desc}

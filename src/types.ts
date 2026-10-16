@@ -14,6 +14,7 @@ export type Habit = {
   timeOfDay?: TimeOfDay;
   days: number[]; // 0 = Sun ... 6 = Sat
   reminderTimes: string[]; // ['08:00', '18:00']
+  scheduledReminders?: string[]; // ISO datetimes for one-time future reminders
   notificationIds: string[];
   archived: boolean;
   createdAt: string;

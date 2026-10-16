@@ -53,23 +53,26 @@ export function HabitProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!settingsLoaded || restoredRef.current) return;
     restoredRef.current = true;
-    (async () => {
-      const storedHabits = await loadHabits();
-      const storedLogs = await loadLogs();
-      const storedNotes = await loadDailyNotes();
+    void Promise.all([loadHabits(), loadLogs(), loadDailyNotes()]).then(([storedHabits, storedLogs, storedNotes]) => {
+      logsRef.current = storedLogs;
+      setHabits(storedHabits);
+      setLogs(storedLogs);
+      setDailyNotes(storedNotes);
+      setLoaded(true);
 
-      let restoredHabits = storedHabits;
-      if (restoredHabits.length === 0) {
-        restoredHabits = [];
-      }
-
-      const previousIds = restoredHabits.flatMap((habit) => habit.notificationIds ?? []);
-      await cancelHabitNotifications(previousIds);
+      // Show the app as soon as local data is ready. Notification cleanup and
+      // scheduling can take multiple native round trips, so finish that work
+      // after the first screen has rendered.
       setRemindersFlag(settings.notificationsEnabled);
-      if (settings.notificationsEnabled) {
-        const permissionGranted = await getNotificationPermissionStatus();
+      void (async () => {
+        const previousIds = storedHabits.flatMap((habit) => habit.notificationIds ?? []);
+        await cancelHabitNotifications(previousIds);
+
+        const permissionGranted = settings.notificationsEnabled
+          ? await getNotificationPermissionStatus()
+          : false;
         const refreshedHabits: Habit[] = [];
-        for (const habit of restoredHabits) {
+        for (const habit of storedHabits) {
           let notificationIds: string[] = [];
           if (permissionGranted && !habit.archived) {
             try {
@@ -80,16 +83,16 @@ export function HabitProvider({ children }: { children: ReactNode }) {
           }
           refreshedHabits.push({ ...habit, notificationIds });
         }
-        restoredHabits = refreshedHabits;
-      }
-
-      setHabits(restoredHabits);
-      await saveHabits(restoredHabits);
-      logsRef.current = storedLogs;
-      setLogs(storedLogs);
-      setDailyNotes(storedNotes);
+        const idsByHabit = new Map(refreshedHabits.map((habit) => [habit.id, habit.notificationIds]));
+        setHabits((current) => current.map((habit) => ({
+          ...habit,
+          notificationIds: idsByHabit.get(habit.id) ?? [],
+        })));
+      })().catch((error) => console.warn('Could not refresh saved reminders:', error));
+    }).catch((error) => {
+      console.warn('Could not load saved habit data:', error);
       setLoaded(true);
-    })();
+    });
   }, [settingsLoaded, settings.notificationsEnabled]);
 
   // Persist after React has had a chance to paint the updated state. Debouncing

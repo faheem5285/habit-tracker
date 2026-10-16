@@ -36,9 +36,9 @@ function sign(params) {
   return createHash('sha1').update(canonical + CLOUDINARY_API_SECRET).digest('hex');
 }
 
-async function cloudinaryUpload(code, data) {
+async function cloudinaryUpload(code, module, data) {
   const timestamp = Math.floor(Date.now() / 1000).toString();
-  const params = { invalidate: 'true', overwrite: 'true', public_id: `recovery_${code}.json`, timestamp };
+  const params = { invalidate: 'true', overwrite: 'true', public_id: `habit-tracker/backups/${code}/${module}.json`, timestamp };
   const form = new FormData();
   form.append('file', `data:application/json;base64,${Buffer.from(JSON.stringify(data)).toString('base64')}`);
   for (const [key, value] of Object.entries(params)) form.append(key, value);
@@ -107,7 +107,11 @@ export async function handleRecoveryRequest(request) {
       if (Buffer.byteLength(JSON.stringify(body.data)) > MAX_BODY) {
         throw Object.assign(new Error('Backup data is too large.'), { status: 413 });
       }
-      await cloudinaryUpload(code, body.data);
+      const module = typeof body.module === 'string' ? body.module : 'habits';
+      if (!['habits', 'loans', 'expenses'].includes(module)) {
+        throw Object.assign(new Error('Invalid backup module.'), { status: 400 });
+      }
+      await cloudinaryUpload(code, module, body.data);
       return send(200, { ok: true });
     }
     return send(404, { error: 'Endpoint not found.' });

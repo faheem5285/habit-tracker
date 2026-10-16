@@ -12,9 +12,15 @@ import { toDateKey } from '../utils/dates';
 import { currentStreak, getValue, isDone } from '../utils/streaks';
 import { motivation } from '../utils/motivationalContent';
 
-type Filter = 'all' | 'remaining' | 'done' | 'morning' | 'afternoon' | 'evening';
+type Filter = 'all' | 'remaining' | 'done';
 
-const MOODS = ['😊 Great', '⚡ Energized', '🧘 Calm', '💪 Productive', '😴 Tired'];
+const MOODS = [
+  { label: 'Great', icon: 'happy-outline' },
+  { label: 'Energized', icon: 'flash-outline' },
+  { label: 'Calm', icon: 'leaf-outline' },
+  { label: 'Productive', icon: 'checkmark-circle-outline' },
+  { label: 'Tired', icon: 'moon-outline' },
+] as const;
 const REFLECTION_PROMPTS = ['What helped you show up?', 'What felt easier today?', 'What would you like to try tomorrow?'];
 
 function getGreeting() {
@@ -31,6 +37,7 @@ export default function TodayScreen() {
   const navigation = useNavigation<any>();
 
   const [filter, setFilter] = useState<Filter>('all');
+  const [showReflection, setShowReflection] = useState(true);
   const now = useMemo(() => new Date(), []);
   const key = toDateKey(now);
 
@@ -50,9 +57,6 @@ export default function TodayScreen() {
       const completed = isDone(h, logs, key);
       if (filter === 'remaining') return !completed;
       if (filter === 'done') return completed;
-      if (filter === 'morning') return h.timeOfDay === 'morning';
-      if (filter === 'afternoon') return h.timeOfDay === 'afternoon';
-      if (filter === 'evening') return h.timeOfDay === 'evening';
       return true;
     });
   }, [scheduledHabits, logs, key, filter]);
@@ -75,7 +79,10 @@ export default function TodayScreen() {
       <View style={styles.topRow}>
         <View style={{ flex: 1 }}>
           <Text style={[styles.eyebrow, { color: colors.primary }]}>DAY BY DAY</Text>
-          <Text style={styles.greeting}>{getGreeting()} ✨</Text>
+          <View style={styles.greetingRow}>
+            <Text style={styles.greeting}>{getGreeting()}</Text>
+            <Ionicons name="sparkles-outline" size={20} color={colors.primary} />
+          </View>
           <Text style={[styles.dateText, { color: colors.textSecondary }]}>
             {now.toLocaleDateString('en-US', {
               weekday: 'long',
@@ -112,11 +119,16 @@ export default function TodayScreen() {
             </Text>
           </View>
 
-          <Text style={styles.momentumTitle}>
-            {doneCount === totalCount && totalCount > 0
-              ? 'All habits completed! 🎉'
-              : `${doneCount} of ${totalCount} completed`}
-          </Text>
+          <View style={styles.momentumTitleRow}>
+            <Text style={styles.momentumTitle}>
+              {doneCount === totalCount && totalCount > 0
+                ? 'All habits completed!'
+                : `${doneCount} of ${totalCount} completed`}
+            </Text>
+            {doneCount === totalCount && totalCount > 0 && (
+              <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+            )}
+          </View>
 
           <Text style={[styles.motivationText, { color: colors.textSecondary }]}>
             {motivation.today(progress, totalCount)}
@@ -141,9 +153,6 @@ export default function TodayScreen() {
               ['all', 'All'],
               ['remaining', 'To Do'],
               ['done', 'Done'],
-              ['morning', '🌅 Morning'],
-              ['afternoon', '☀️ Afternoon'],
-              ['evening', '🌙 Evening'],
             ] as const
           ).map(([val, label]) => {
             const active = filter === val;
@@ -229,9 +238,9 @@ export default function TodayScreen() {
         }
         ListFooterComponent={
           <View style={[styles.notesCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={styles.notesHeader}>
+            <View style={[styles.notesHeader, !showReflection && { marginBottom: 0 }]}>
               <View style={[styles.notesIconWrap, { backgroundColor: colors.accentSoft }]}>
-                <Ionicons name="journal-outline" size={18} color={colors.accent} />
+                <Ionicons name="journal-outline" size={18} color={colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.notesTitle}>Daily reflection</Text>
@@ -240,63 +249,86 @@ export default function TodayScreen() {
                 </Text>
               </View>
               {!!currentNote.trim() && (
-                <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+                <Ionicons name="checkmark-circle" size={18} color={colors.primary} style={{ marginRight: 6 }} />
               )}
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={showReflection ? 'Hide daily reflection' : 'Show daily reflection'}
+                style={[
+                  styles.toggleReflectionBtn,
+                  { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
+                ]}
+                onPress={() => setShowReflection((prev) => !prev)}
+              >
+                <Text style={[styles.toggleReflectionText, { color: colors.textSecondary }]}>
+                  {showReflection ? 'Hide' : 'Show'}
+                </Text>
+                <Ionicons
+                  name={showReflection ? 'chevron-up' : 'chevron-down'}
+                  size={14}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
             </View>
 
-            <Text style={[styles.reflectionPromptLabel, { color: colors.textSecondary }]}>Choose a prompt, or write freely</Text>
-            <View style={styles.promptRow}>
-              {REFLECTION_PROMPTS.map((prompt) => (
-                <TouchableOpacity key={prompt} style={[styles.promptPill, { backgroundColor: colors.surfaceMuted, borderColor: colors.border }]} onPress={() => addReflectionPrompt(prompt)}>
-                  <Text style={[styles.promptText, { color: colors.textSecondary }]}>{prompt}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {showReflection && (
+              <>
+                <Text style={[styles.reflectionPromptLabel, { color: colors.textSecondary }]}>Choose a prompt, or write freely</Text>
+                <View style={styles.promptRow}>
+                  {REFLECTION_PROMPTS.map((prompt) => (
+                    <TouchableOpacity key={prompt} style={[styles.promptPill, { backgroundColor: colors.surfaceMuted, borderColor: colors.border }]} onPress={() => addReflectionPrompt(prompt)}>
+                      <Text style={[styles.promptText, { color: colors.textSecondary }]}>{prompt}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
 
-            {/* Quick Mood Pills */}
-            <View style={styles.moodRow}>
-              {MOODS.map((mood) => (
-                <TouchableOpacity
-                  key={mood}
+                {/* Quick Mood Pills */}
+                <View style={styles.moodRow}>
+                  {MOODS.map((mood) => (
+                    <TouchableOpacity
+                      key={mood.label}
+                      style={[
+                        styles.moodPill,
+                        { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
+                        currentNote.includes(mood.label) && {
+                          backgroundColor: colors.primarySoft,
+                          borderColor: colors.primary,
+                        },
+                      ]}
+                      onPress={() => {
+                        const tag = `${mood.label} · `;
+                        if (currentNote.includes(mood.label)) {
+                          setDailyNote(key, currentNote.replace(tag, ''));
+                        } else {
+                          setDailyNote(key, tag + currentNote);
+                        }
+                      }}
+                    >
+                      <Ionicons name={mood.icon} size={14} color={colors.primary} />
+                      <Text style={[styles.moodText, { color: colors.textSecondary }]}>{mood.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <TextInput
+                  multiline
+                  maxLength={600}
+                  value={currentNote}
+                  onChangeText={(text) => setDailyNote(key, text)}
+                  placeholder="Write what you noticed, learned, or want to remember..."
+                  textAlignVertical="top"
                   style={[
-                    styles.moodPill,
-                    { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
-                    currentNote.includes(mood) && {
-                      backgroundColor: colors.primarySoft,
-                      borderColor: colors.primary,
+                    styles.notesInput,
+                    {
+                      color: colors.text,
+                      backgroundColor: colors.surfaceMuted,
+                      borderColor: colors.border,
                     },
                   ]}
-                  onPress={() => {
-                    const tag = `${mood} · `;
-                    if (currentNote.includes(mood)) {
-                      setDailyNote(key, currentNote.replace(tag, ''));
-                    } else {
-                      setDailyNote(key, tag + currentNote);
-                    }
-                  }}
-                >
-                  <Text style={[styles.moodText, { color: colors.textSecondary }]}>{mood}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <TextInput
-              multiline
-              maxLength={600}
-              value={currentNote}
-              onChangeText={(text) => setDailyNote(key, text)}
-              placeholder="Write what you noticed, learned, or want to remember..."
-              textAlignVertical="top"
-              style={[
-                styles.notesInput,
-                {
-                  color: colors.text,
-                  backgroundColor: colors.surfaceMuted,
-                  borderColor: colors.border,
-                },
-              ]}
-            />
-            <Text style={[styles.characterCount, { color: colors.muted }]}>{currentNote.length}/600</Text>
+                />
+                <Text style={[styles.characterCount, { color: colors.muted }]}>{currentNote.length}/600</Text>
+              </>
+            )}
           </View>
         }
       />
@@ -308,6 +340,8 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   listContent: { paddingHorizontal: 18, paddingTop: 12, paddingBottom: 60 },
   headerContainer: { marginBottom: 12 },
+  greetingRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  momentumTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -458,6 +492,19 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 1,
   },
+  toggleReflectionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  toggleReflectionText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
   reflectionPromptLabel: { fontSize: 11, fontWeight: '700', marginBottom: 7 },
   promptRow: { gap: 6, marginBottom: 10 },
   promptPill: { alignSelf: 'flex-start', borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7 },
@@ -470,6 +517,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   moodPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     paddingHorizontal: 9,
     paddingVertical: 5,
     borderRadius: 8,

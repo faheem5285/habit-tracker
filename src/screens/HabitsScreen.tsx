@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text } from '../components/Themed';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { HabitGlyph } from '../components/HabitGlyph';
 import { HabitsStackParams } from '../navigation/types';
 import { useHabits, HabitInput } from '../context/HabitContext';
 import { DAY_LABELS, formatTime, todayKey } from '../utils/dates';
@@ -189,7 +190,7 @@ const scheduleText = (days: number[]) =>
 const TEMPLATE_LIBRARY = [...TEMPLATES, ...EXTRA_TEMPLATES];
 
 export default function HabitsScreen({ navigation }: Props) {
-  const { habits, logs, addHabit, deleteHabit, toggleHabit, incrementHabit } = useHabits();
+  const { habits, logs, deleteHabit, toggleHabit, incrementHabit } = useHabits();
   const { colors } = useSettings();
 
   const [activeTab, setActiveTab] = useState<'habits' | 'templates'>('habits');
@@ -237,22 +238,13 @@ export default function HabitsScreen({ navigation }: Props) {
     ]);
   };
 
-  const handleAddTemplate = async (template: HabitInput) => {
-    try {
-      await addHabit(template);
-      Alert.alert(
-        'Habit Added! 🎉',
-        `"${template.name}" is ready to shape around your routine. You can adjust its schedule and reminders any time.`
-      );
-      setActiveTab('habits');
-    } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to add habit.');
-    }
+  const handleAddTemplate = (template: HabitInput) => {
+    navigation.navigate('HabitForm', { template });
   };
 
   const previewTemplate = (item: (typeof TEMPLATE_LIBRARY)[number]) => Alert.alert(
     item.name,
-    `${item.desc}\n\n${item.categoryName} · ${item.target} ${item.unit || 'check-in'}${item.type === 'count' ? ' per day' : ''}\n${scheduleText(item.days)} · ${item.timeOfDay || 'any time'} · ${item.days.length >= 6 ? 'Gentle start' : 'Focused'}\n\nExpected benefit: ${item.desc} Start small and adjust the target to fit your routine.`,
+    `${item.desc}\n\n${item.categoryName} · ${item.target} ${item.unit || 'check-in'}${item.type === 'count' ? ' per day' : ''}\n${scheduleText(item.days)} · ${item.days.length >= 6 ? 'Gentle start' : 'Focused'}\n\nExpected benefit: ${item.desc} Start small and adjust the target to fit your routine.`,
     [{ text: 'Close', style: 'cancel' }, { text: 'Add this habit', onPress: () => { void handleAddTemplate(item); } }]
   );
 
@@ -301,6 +293,7 @@ export default function HabitsScreen({ navigation }: Props) {
             ]}
             onPress={() => setActiveTab('templates')}
           >
+            <Ionicons name="library-outline" size={15} color={activeTab === 'templates' ? colors.primary : colors.muted} />
             <Text
               style={[
                 styles.segmentText,
@@ -308,7 +301,7 @@ export default function HabitsScreen({ navigation }: Props) {
                 activeTab === 'templates' && { fontWeight: '700' },
               ]}
             >
-              💡 Templates Library
+              Templates Library
             </Text>
           </TouchableOpacity>
         </View>
@@ -322,7 +315,7 @@ export default function HabitsScreen({ navigation }: Props) {
                 { backgroundColor: colors.surface, borderColor: colors.border },
               ]}
             >
-              <Ionicons name="search" size={18} color={colors.muted} />
+              <Ionicons name="search" size={18} color={colors.primary} />
               <TextInput
                 placeholder={activeTab === 'habits' ? 'Search your habits...' : 'Search templates...'}
                 placeholderTextColor={colors.muted}
@@ -332,7 +325,7 @@ export default function HabitsScreen({ navigation }: Props) {
               />
               {!!search && (
                 <TouchableOpacity onPress={() => setSearch('')}>
-                  <Ionicons name="close-circle" size={18} color={colors.muted} />
+                  <Ionicons name="close-circle" size={18} color={colors.primary} />
                 </TouchableOpacity>
               )}
             </View>
@@ -394,7 +387,7 @@ export default function HabitsScreen({ navigation }: Props) {
             >
               <TouchableOpacity activeOpacity={0.8} style={styles.habitMain} onPress={() => navigation.navigate('HabitDetail', { habitId: item.id })}>
                 <View style={[styles.iconWrap, { backgroundColor: item.color + '1A' }]}>
-                  <Text style={styles.icon}>{item.icon}</Text>
+                  <HabitGlyph icon={item.icon} category={item.category} name={item.name} />
                 </View>
 
               <View style={styles.cardDetails}>
@@ -406,7 +399,7 @@ export default function HabitsScreen({ navigation }: Props) {
                 </Text>
                 {!item.archived && (
                   <View style={styles.habitProgressRow}>
-                    <Ionicons name="flame" size={12} color={colors.accent} />
+                    <Ionicons name="flame" size={12} color={colors.primary} />
                     <Text style={[styles.habitProgressText, { color: colors.accent }]}>{currentStreak(item, logs, today)} day streak</Text>
                     <Text style={[styles.habitProgressText, { color: colors.muted }]}>
                       {item.type === 'count' ? `${getValue(logs, item.id, todayDateKey)}/${item.target} today` : isDone(item, logs, todayDateKey) ? 'Done today' : 'Ready for today'}
@@ -432,7 +425,11 @@ export default function HabitsScreen({ navigation }: Props) {
                 onPress={() => item.type === 'count' ? incrementHabit(item.id, todayDateKey) : toggleHabit(item.id, todayDateKey)}
                 hitSlop={8}
               >
-                <Ionicons name={item.type === 'count' ? 'add' : isDone(item, logs, todayDateKey) ? 'checkmark' : 'checkmark-outline'} size={19} color={colors.primary} />
+                {item.type === 'count' ? (
+                  <Ionicons name="add" size={19} color={colors.primary} />
+                ) : (
+                  <HabitGlyph icon={item.icon} category={item.category} name={item.name} size={19} />
+                )}
               </TouchableOpacity>}
 
               <TouchableOpacity
@@ -440,7 +437,7 @@ export default function HabitsScreen({ navigation }: Props) {
                 onPress={() => confirmDelete(item.id, item.name)}
                 hitSlop={8}
               >
-                <Ionicons name="trash-outline" size={18} color={colors.muted} />
+                <Ionicons name="trash-outline" size={18} color={colors.primary} />
               </TouchableOpacity>
             </View>
           )}
@@ -511,7 +508,7 @@ export default function HabitsScreen({ navigation }: Props) {
               ]}
             >
               <View style={[styles.iconWrap, { backgroundColor: item.color + '1A' }]}>
-                <Text style={styles.icon}>{item.icon}</Text>
+                <HabitGlyph icon={item.icon} category={item.category} name={item.name} />
               </View>
 
               <View style={styles.cardDetails}>
@@ -570,6 +567,9 @@ const styles = StyleSheet.create({
   },
   segmentBtn: {
     flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
     paddingVertical: 9,
     alignItems: 'center',
     borderRadius: 11,

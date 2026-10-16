@@ -3,6 +3,7 @@ import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { HabitGlyph } from '../components/HabitGlyph';
 import { Text } from '../components/Themed';
 import BarChart from '../components/BarChart';
 import Heatmap from '../components/Heatmap';
@@ -99,7 +100,7 @@ export default function DashboardScreen() {
   }, [cursor]);
 
   const ranked = useMemo(() => isFocused ? [...list].sort((a, b) => completionRate(b, logs) - completionRate(a, logs)) : [], [isFocused, list, logs]);
-  const filters = useMemo(() => [{ id: 'all', name: 'All Habits' }, ...active.map((h) => ({ id: h.id, name: `${h.icon} ${h.name}` }))], [active]);
+  const filters = useMemo(() => [{ id: 'all', name: 'All Habits' }, ...active.map((h) => ({ id: h.id, name: h.name }))], [active]);
   const monthTrendValues = useMemo(() => isFocused ? Array.from({ length: 30 }, (_, i) => {
     const stat = dayStat(list, logs, addDays(now, i - 29));
     return stat.total ? pct(stat) : -1;
@@ -196,7 +197,7 @@ export default function DashboardScreen() {
 
           <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={styles.statIconRow}>
-              <Ionicons name="calendar-outline" size={18} color={colors.success} />
+              <Ionicons name="calendar-outline" size={18} color={colors.primary} />
               <Text style={[styles.statBadge, { color: colors.success }]}>WEEK</Text>
             </View>
             <Text style={styles.statValue}>{weekPct}%</Text>
@@ -205,7 +206,7 @@ export default function DashboardScreen() {
 
           <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={styles.statIconRow}>
-              <Ionicons name="flame" size={18} color={colors.accent} />
+              <Ionicons name="flame" size={18} color={colors.primary} />
               <Text style={[styles.statBadge, { color: colors.accent }]}>STREAK</Text>
             </View>
             <Text style={styles.statValue}>{bestNow}d</Text>
@@ -214,7 +215,7 @@ export default function DashboardScreen() {
 
           <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={styles.statIconRow}>
-              <Ionicons name="ribbon-outline" size={18} color={gradeInfo.color} />
+              <Ionicons name="ribbon-outline" size={18} color={colors.primary} />
               <Text style={[styles.statBadge, { color: gradeInfo.color }]}>GRADE</Text>
             </View>
             <Text style={[styles.statValue, { color: gradeInfo.color }]}>{gradeInfo.grade}</Text>
@@ -238,7 +239,7 @@ export default function DashboardScreen() {
           {list.map((h) => (
             <View key={h.id} style={styles.matrixRow}>
               <Text style={styles.nameCol} numberOfLines={1}>
-                {h.icon} {h.name}
+                {h.name}
               </Text>
               {weekDays.map((d) => {
                 const m = mark(h, d);
@@ -323,7 +324,7 @@ export default function DashboardScreen() {
           <Text style={styles.sectionTitle}>Monthly Consistency</Text>
           <View style={styles.monthNavRow}>
             <TouchableOpacity onPress={() => shift(-1)} hitSlop={10}>
-              <Ionicons name="chevron-back" size={20} color={colors.muted} />
+              <Ionicons name="chevron-back" size={20} color={colors.primary} />
             </TouchableOpacity>
             <Text style={styles.monthLabel}>
               {new Date(cursor.y, cursor.m).toLocaleDateString('en-US', {
@@ -332,7 +333,7 @@ export default function DashboardScreen() {
               })}
             </Text>
             <TouchableOpacity onPress={() => shift(1)} hitSlop={10}>
-              <Ionicons name="chevron-forward" size={20} color={colors.muted} />
+              <Ionicons name="chevron-forward" size={20} color={colors.primary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -365,7 +366,7 @@ export default function DashboardScreen() {
                 })
               }
             >
-              <Text style={styles.rankIcon}>{h.icon}</Text>
+              <HabitGlyph icon={h.icon} category={h.category} size={26} />
               <View style={styles.rankInfo}>
                 <Text style={styles.rankName} numberOfLines={1}>
                   {h.name}
@@ -379,9 +380,10 @@ export default function DashboardScreen() {
                   />
                 </View>
               </View>
-              <Text style={[styles.rankStreak, { color: colors.accent }]}>
-                🔥 {currentStreak(h, logs, now)}d
-              </Text>
+              <View style={styles.rankStreakRow}>
+                <Ionicons name="flame-outline" size={13} color={colors.primary} />
+                <Text style={[styles.rankStreak, { color: colors.accent }]}>{currentStreak(h, logs, now)}d</Text>
+              </View>
               <Text style={styles.rankRate}>{rate}%</Text>
             </TouchableOpacity>
           );
@@ -457,5 +459,6 @@ const styles = StyleSheet.create({
   progressBarBg: { height: 5, borderRadius: 2.5, overflow: 'hidden', marginTop: 5 },
   progressBarFill: { height: '100%', borderRadius: 2.5 },
   rankStreak: { fontSize: 12, fontWeight: '700', marginRight: 10 },
+  rankStreakRow: { flexDirection: 'row', alignItems: 'center' },
   rankRate: { fontSize: 14, fontWeight: '800', minWidth: 38, textAlign: 'right' },
 });
