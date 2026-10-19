@@ -19,7 +19,7 @@ import {
 export const PASSWORD_VAULT_STORAGE_KEY = 'momentum.passwords.encrypted.v1';
 export const PASSWORD_VAULT_TIMEOUT_KEY = 'momentum.passwords.timeout.v1';
 export const VAULT_KDF_ITERATIONS = 600_000;
-const NATIVE_VAULT_KDF_ITERATIONS = 210_000;
+export const NATIVE_VAULT_KDF_ITERATIONS = 100_000;
 export const MIN_MASTER_PASSPHRASE_LENGTH = 12;
 const MAX_BACKUP_LENGTH = 2_000_000;
 const MAX_VAULT_PLAINTEXT_LENGTH = 900_000;
@@ -119,7 +119,12 @@ export function validateVaultEnvelope(value: unknown): VaultEnvelope {
   return envelope as VaultEnvelope;
 }
 
-async function deriveKey(passphrase: string, saltHex: string, iterations: number) {
+async function deriveKey(
+  passphrase: string,
+  saltHex: string,
+  iterations: number,
+  fallbackIterations = iterations,
+) {
   const subtle = globalThis.crypto?.subtle;
   if (subtle) {
     let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -148,7 +153,7 @@ async function deriveKey(passphrase: string, saltHex: string, iterations: number
           timeout = setTimeout(() => reject(new Error('Native key derivation timed out.')), 5_000);
         }),
       ]);
-      return new Uint8Array(derivedBits);
+      return { key: new Uint8Array(derivedBits), iterations, usedSubtle: true };
     } catch {
       // Fall back to the bundled implementation when native Web Crypto is unavailable or stalls.
     } finally {
@@ -156,12 +161,13 @@ async function deriveKey(passphrase: string, saltHex: string, iterations: number
     }
   }
 
-  return pbkdf2Async(
+  const key = await pbkdf2Async(
     sha256,
     utf8ToBytes(passphrase),
     hexToBytes(saltHex),
-    { c: iterations, dkLen: 32 },
+    { c: fallbackIterations, dkLen: 32 },
   );
+  return { key, iterations: fallbackIterations, usedSubtle: false };
 }
 
 async function encryptEntries(
@@ -193,15 +199,15 @@ export async function createEncryptedVault(passphrase: string, entries: Password
   const iterations = globalThis.crypto?.subtle
     ? VAULT_KDF_ITERATIONS
     : NATIVE_VAULT_KDF_ITERATIONS;
-  const key = await deriveKey(passphrase, saltHex, iterations);
+  const derived = await deriveKey(passphrase, saltHex, iterations, NATIVE_VAULT_KDF_ITERATIONS);
   try {
-    const envelope = await encryptEntries(entries, key, {
+    const envelope = await encryptEntries(entries, derived.key, {
       salt: saltHex,
-      iterations,
+      iterations: derived.iterations,
     });
-    return { envelope, key };
+    return { envelope, key: derived.key };
   } catch (error) {
-    key.fill(0);
+    derived.key.fill(0);
     throw error;
   }
 }
@@ -216,7 +222,8 @@ export async function reencryptVaultEntries(
 
 export async function decryptVaultEnvelope(value: unknown, passphrase: string) {
   const envelope = validateVaultEnvelope(value);
-  const key = await deriveKey(passphrase, envelope.salt, envelope.iterations);
+  const derived = await deriveKey(passphrase, envelope.salt, envelope.iterations);
+  const { key } = derived;
   try {
     const plaintext = gcm(
       key,
@@ -225,7 +232,7 @@ export async function decryptVaultEnvelope(value: unknown, passphrase: string) {
     ).decrypt(hexToBytes(envelope.ciphertext));
     const parsed: unknown = JSON.parse(new TextDecoder().decode(plaintext));
     const entries = validatePasswordEntries(parsed);
-    return { envelope, entries, key };
+    return { envelope, entries, key, usedSubtle: derived.usedSubtle };
   } catch {
     key.fill(0);
     throw new Error('Could not unlock this vault. Check the passphrase and file.');

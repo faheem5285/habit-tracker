@@ -329,7 +329,9 @@ export default function PasswordManagerScreen() {
             </View>
             <Text style={styles.authTitle}>{setup ? 'Start with a strong passphrase' : 'Welcome back'}</Text>
             <Text style={[styles.bodyCopy, { color: colors.textSecondary }]}>
-              {setup
+              {operationBusy
+                ? 'Deriving your encryption key securely. Older vaults may take longer on the first unlock; keep the app open.'
+                : setup
                 ? 'Your passphrase derives the encryption key. It is never stored. Use 12 or more characters that you will remember.'
                 : 'Enter the master passphrase you chose when you created this vault.'}
             </Text>
@@ -372,7 +374,7 @@ export default function PasswordManagerScreen() {
             </Pressable>
             {authError ? <Text accessibilityRole="alert" style={[styles.errorText, { color: colors.danger }]}>{authError}</Text> : null}
             <Button
-              label={operationBusy ? 'Please wait…' : setup ? 'Create encrypted vault' : 'Unlock vault'}
+              label={operationBusy ? setup ? 'Creating vault…' : 'Unlocking securely…' : setup ? 'Create encrypted vault' : 'Unlock vault'}
               onPress={() => void submitAuth()}
               loading={operationBusy}
               disabled={operationBusy}

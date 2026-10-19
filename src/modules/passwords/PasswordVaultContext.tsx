@@ -12,6 +12,7 @@ import { AppState } from 'react-native';
 import {
   createEncryptedVault,
   decryptVaultEnvelope,
+  NATIVE_VAULT_KDF_ITERATIONS,
   reencryptVaultEntries,
   validatePasswordEntries,
 } from './crypto';
@@ -175,6 +176,40 @@ export function PasswordVaultProvider({ children }: { children: ReactNode }) {
     setUnlocked(true);
     setLoadError(null);
     touch();
+
+    if (
+      !decrypted.usedSubtle &&
+      decrypted.envelope.iterations > NATIVE_VAULT_KDF_ITERATIONS
+    ) {
+      const oldKey = decrypted.key;
+      const migration = createEncryptedVault(passphrase, decrypted.entries).then(async (migrated) => {
+        const write = writeQueue.current.catch(() => undefined).then(async () => {
+          if (keyRef.current !== oldKey || AppState.currentState !== 'active') {
+            migrated.key.fill(0);
+            return;
+          }
+          try {
+            const migratedEnvelope = await reencryptVaultEntries(
+              migrated.envelope,
+              migrated.key,
+              entriesRef.current,
+            );
+            await writeVaultEnvelope(migratedEnvelope);
+            envelopeRef.current = migratedEnvelope;
+            keyRef.current = migrated.key;
+            oldKey.fill(0);
+            touch();
+            void syncRecoveryData().catch((error) => console.warn('Password vault backup sync failed:', error));
+          } catch (error) {
+            migrated.key.fill(0);
+            throw error;
+          }
+        });
+        writeQueue.current = write;
+        await write;
+      });
+      void migration.catch((error) => console.warn('Could not optimize password vault unlock time:', error));
+    }
   }, [touch]);
 
   const persistChange = useCallback((mutate: (current: PasswordEntry[]) => PasswordEntry[]) => {

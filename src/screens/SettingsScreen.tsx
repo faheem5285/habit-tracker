@@ -11,6 +11,7 @@ import { useSettings } from '../context/SettingsContext';
 import { useHabits } from '../context/HabitContext';
 import { AppPalette } from '../theme';
 import { sendTestNotification, getNotificationPermissionStatus, ensurePermission } from '../utils/notifications';
+import { copySecretTemporarily } from '../modules/passwords/clipboard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RECOVERY_BACKUP_READY_KEY, RECOVERY_CODE_KEY } from '../utils/storage';
 import { createRecoveryCode, syncRecoveryData } from '../utils/recovery';
@@ -182,6 +183,16 @@ export default function SettingsScreen() {
   };
 
   const copyRecoveryCode = async () => {
+    if (!recoveryCode) return;
+    try {
+      await copySecretTemporarily(recoveryCode);
+      Alert.alert('Copied', 'Your recovery code was copied and will be cleared from the clipboard after 30 seconds if unchanged.');
+    } catch (error) {
+      Alert.alert('Could not copy recovery code', error instanceof Error ? error.message : 'Please try again.');
+    }
+  };
+
+  const shareRecoveryCode = async () => {
     if (!recoveryCode) return;
     try {
       await Share.share({ title: 'Momentum recovery code', message: recoveryCode });
@@ -516,6 +527,9 @@ export default function SettingsScreen() {
                 <Text style={[styles.recoveryCodeButtonText, { color: colors.primary }]}>{showRecoveryCode ? 'Hide' : 'Show'}</Text>
               </TouchableOpacity>
               <TouchableOpacity accessibilityRole="button" style={[styles.recoveryCodeButton, { borderColor: colors.border }]} onPress={() => void copyRecoveryCode()}>
+                <Text style={[styles.recoveryCodeButtonText, { color: colors.primary }]}>Copy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity accessibilityRole="button" style={[styles.recoveryCodeButton, { borderColor: colors.border }]} onPress={() => void shareRecoveryCode()}>
                 <Text style={[styles.recoveryCodeButtonText, { color: colors.primary }]}>Share</Text>
               </TouchableOpacity>
             </View>
