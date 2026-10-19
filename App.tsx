@@ -6,7 +6,13 @@ import { HabitProvider, useHabits } from './src/context/HabitContext';
 import { SettingsProvider, useSettings } from './src/context/SettingsContext';
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { hasLocalAppData, RECOVERY_STARTED_KEY } from './src/utils/storage';
+import { Alert } from 'react-native';
+import {
+  hasLocalAppData,
+  RECOVERY_BACKUP_READY_KEY,
+  RECOVERY_PROMPT_SEEN_KEY,
+  RECOVERY_STARTED_KEY,
+} from './src/utils/storage';
 import { syncRecoveryData } from './src/utils/recovery';
 import { LoaderScreen } from './src/components/AppLoader';
 import { useColorScheme } from 'react-native';
@@ -15,6 +21,31 @@ import { PasswordVaultProvider } from './src/modules/passwords/PasswordVaultCont
 function Gate() {
   const { settings, loaded, isDark } = useSettings();
   const { habits, logs, dailyNotes, loaded: habitsLoaded } = useHabits();
+  const [recoveryPromptChecked, setRecoveryPromptChecked] = useState(false);
+  const [needsRecoveryPrompt, setNeedsRecoveryPrompt] = useState(false);
+
+  useEffect(() => {
+    if (!loaded) return;
+    let active = true;
+    if (!settings.hasOnboarded) {
+      setNeedsRecoveryPrompt(false);
+      setRecoveryPromptChecked(true);
+      return () => { active = false; };
+    }
+    void Promise.all([
+      AsyncStorage.getItem(RECOVERY_BACKUP_READY_KEY),
+      AsyncStorage.getItem(RECOVERY_PROMPT_SEEN_KEY),
+    ]).then(([backupReady, promptSeen]) => {
+      if (!active) return;
+      setNeedsRecoveryPrompt(backupReady !== 'true' && promptSeen !== 'true');
+      setRecoveryPromptChecked(true);
+    }).catch((error) => {
+      console.warn('Could not read recovery prompt status:', error);
+      if (active) setRecoveryPromptChecked(true);
+    });
+    return () => { active = false; };
+  }, [loaded, settings.hasOnboarded]);
+
   useEffect(() => {
     if (!loaded || !habitsLoaded) return;
     const timeout = setTimeout(() => {
@@ -23,10 +54,23 @@ function Gate() {
     }, 1200);
     return () => clearTimeout(timeout);
   }, [loaded, habitsLoaded, settings, habits, logs, dailyNotes]);
-  if (!loaded || !habitsLoaded) return <LoaderScreen scheme={isDark ? 'dark' : 'light'} />;
+  if (!loaded || !habitsLoaded || !recoveryPromptChecked) return <LoaderScreen scheme={isDark ? 'dark' : 'light'} />;
+  const dismissRecoveryPrompt = async () => {
+    try {
+      await AsyncStorage.setItem(RECOVERY_PROMPT_SEEN_KEY, 'true');
+      setNeedsRecoveryPrompt(false);
+    } catch (error) {
+      console.warn('Could not save recovery prompt status:', error);
+      Alert.alert('Could not save this choice', 'Please try again. Your data has not been deleted.');
+    }
+  };
   return (
     <>
-      {settings.hasOnboarded ? <RootNavigator /> : <OnboardingScreen />}
+      {settings.hasOnboarded
+        ? needsRecoveryPrompt
+          ? <OnboardingScreen recoveryPromptOnly onRecoveryPromptDone={dismissRecoveryPrompt} />
+          : <RootNavigator />
+        : <OnboardingScreen />}
       <StatusBar style={isDark ? 'light' : 'dark'} />
     </>
   );

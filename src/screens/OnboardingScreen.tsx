@@ -12,7 +12,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Button from '../components/Button';
 import { copySecretTemporarily } from '../modules/passwords/clipboard';
 import { createRecoveryCode, syncRecoveryData } from '../utils/recovery';
-import { RECOVERY_BACKUP_READY_KEY, RECOVERY_CODE_KEY } from '../utils/storage';
+import {
+  RECOVERY_BACKUP_READY_KEY,
+  RECOVERY_CODE_KEY,
+  RECOVERY_PROMPT_SEEN_KEY,
+} from '../utils/storage';
 
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 const STARTERS: HabitInput[] = [
@@ -22,7 +26,13 @@ const STARTERS: HabitInput[] = [
 ];
 const SLIDES = appCopy.onboarding;
 
-export default function OnboardingScreen() {
+export default function OnboardingScreen({
+  recoveryPromptOnly = false,
+  onRecoveryPromptDone,
+}: {
+  recoveryPromptOnly?: boolean;
+  onRecoveryPromptDone?: () => Promise<void>;
+}) {
   const { addHabits, habits, logs, dailyNotes } = useHabits();
   const { update, colors, settings } = useSettings();
   const [step, setStep] = useState(0);
@@ -33,7 +43,7 @@ export default function OnboardingScreen() {
   const [recoveryReady, setRecoveryReady] = useState(false);
   const slideProgress = useRef(new Animated.Value(1)).current;
   const slideDirection = useRef(1);
-  const lastStep = SLIDES.length;
+  const lastStep = recoveryPromptOnly ? 0 : SLIDES.length;
   const moveStep = useCallback((change: number) => {
     setStep((current) => {
       const next = Math.max(0, Math.min(lastStep, current + change));
@@ -64,7 +74,22 @@ export default function OnboardingScreen() {
   const toggle = (i: number) =>
     setPicked((p) => (p.includes(i) ? p.filter((x) => x !== i) : [...p, i]));
   const finish = () => {
+    if (recoveryPromptOnly) {
+      void onRecoveryPromptDone?.();
+      return;
+    }
+    void AsyncStorage.setItem(RECOVERY_PROMPT_SEEN_KEY, 'true')
+      .catch((error) => console.warn('Could not save recovery prompt status:', error));
     addHabits(picked.map((i) => STARTERS[i]));
+    update({ hasOnboarded: true });
+  };
+  const skipOnboarding = () => {
+    if (recoveryPromptOnly) {
+      finish();
+      return;
+    }
+    void AsyncStorage.setItem(RECOVERY_PROMPT_SEEN_KEY, 'true')
+      .catch((error) => console.warn('Could not save recovery prompt status:', error));
     update({ hasOnboarded: true });
   };
   const setupRecovery = async () => {
@@ -75,6 +100,10 @@ export default function OnboardingScreen() {
       setRecoveryCode(code);
       await syncRecoveryData(code, { habits, logs, dailyNotes, settings });
       await AsyncStorage.setItem(RECOVERY_BACKUP_READY_KEY, 'true');
+      if (recoveryPromptOnly) {
+        await AsyncStorage.setItem(RECOVERY_PROMPT_SEEN_KEY, 'true');
+        await onRecoveryPromptDone?.();
+      }
       setRecoveryReady(true);
       Alert.alert('Recovery backup ready', 'Keep your recovery code somewhere safe. You will need it to restore your data.');
     } catch (error) {
@@ -202,7 +231,7 @@ export default function OnboardingScreen() {
 
       <View style={styles.footerActions}>
         <View style={styles.secondaryActions}>
-          <TouchableOpacity style={styles.footerAction} onPress={() => moveStep(-1)} disabled={step === 0}>
+          <TouchableOpacity style={styles.footerAction} onPress={() => moveStep(-1)} disabled={step === 0 || recoveryPromptOnly}>
             <Text style={[styles.footerActionText, { color: step === 0 ? colors.muted : colors.primary }]}>Back</Text>
           </TouchableOpacity>
           <View style={styles.dots}>
@@ -217,8 +246,8 @@ export default function OnboardingScreen() {
               />
             ))}
           </View>
-          <TouchableOpacity style={styles.footerAction} onPress={() => update({ hasOnboarded: true })} disabled={recoveryBusy}>
-            <Text style={[styles.footerActionText, { color: colors.primary }]}>Skip</Text>
+          <TouchableOpacity style={styles.footerAction} onPress={skipOnboarding} disabled={recoveryBusy}>
+            <Text style={[styles.footerActionText, { color: colors.primary }]}>{recoveryPromptOnly ? 'Not now' : 'Skip'}</Text>
           </TouchableOpacity>
         </View>
         <TouchableOpacity
@@ -226,7 +255,9 @@ export default function OnboardingScreen() {
           onPress={() => step < lastStep ? moveStep(1) : finish()}
           disabled={recoveryBusy}
         >
-          <Text style={[styles.primaryText, { color: colors.onPrimary }]}>{step < lastStep ? 'Next' : 'Get started'}</Text>
+          <Text style={[styles.primaryText, { color: colors.onPrimary }]}>
+            {recoveryPromptOnly ? 'Continue without backup' : step < lastStep ? 'Next' : 'Get started'}
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
