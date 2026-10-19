@@ -150,7 +150,7 @@ async function uploadEncryptedAsset(code: string, kind: 'manifest' | 'file', byt
     const form = new FormData();
     const buffer = new ArrayBuffer(bytes.byteLength);
     new Uint8Array(buffer).set(bytes);
-    form.append('file', new Blob([buffer], { type: 'application/octet-stream' }), kind === 'manifest' ? 'full.json' : 'file.bin');
+    form.append('file', new Blob([buffer], { type: 'application/octet-stream' }), kind === 'manifest' ? 'full.json' : 'file.json');
     Object.entries(parameters).forEach(([key, value]) => form.append(key, value));
     const response = await fetchWithTimeout(url, { method: 'POST', body: form }, BACKUP_UPLOAD_TIMEOUT_MS);
     const result = await response.json().catch(() => null);
@@ -159,7 +159,7 @@ async function uploadEncryptedAsset(code: string, kind: 'manifest' | 'file', byt
     }
   } else {
     if (!FileSystem.cacheDirectory) throw new Error('Temporary storage is unavailable for the encrypted backup upload.');
-    const tempUri = `${FileSystem.cacheDirectory}momentum-backup-${bytesToHex(await Crypto.getRandomBytesAsync(12))}.bin`;
+    const tempUri = `${FileSystem.cacheDirectory}momentum-backup-${bytesToHex(await Crypto.getRandomBytesAsync(12))}.json`;
     try {
       await FileSystem.writeAsStringAsync(tempUri, fromByteArray(bytes), {
         encoding: FileSystem.EncodingType.Base64,
@@ -306,7 +306,7 @@ async function syncFullBackup(code: string, snapshot?: AppBackup) {
         cached.storedName === file.storedName &&
         typeof cached.publicId === 'string' &&
         cached.publicId.startsWith(`habit-tracker/backups/${code}/files/`) &&
-        /^[0-9a-f]{32}\.bin$/i.test(cached.publicId.slice(`habit-tracker/backups/${code}/files/`.length)) &&
+        /^[0-9a-f]{32}\.json$/i.test(cached.publicId.slice(`habit-tracker/backups/${code}/files/`.length)) &&
         typeof cached.nonce === 'string' &&
         /^[0-9a-f]{24}$/i.test(cached.nonce)
       ) {
@@ -476,7 +476,7 @@ function isFullBackupData(value: unknown, code: string): value is FullBackupData
     isManagedFile(candidate.file) &&
     typeof candidate.publicId === 'string' &&
     candidate.publicId.startsWith(expectedPrefix) &&
-    /^[0-9a-f]{32}\.bin$/i.test(candidate.publicId.slice(expectedPrefix.length)) &&
+    /^[0-9a-f]{32}\.(?:bin|json)$/i.test(candidate.publicId.slice(expectedPrefix.length)) &&
     typeof candidate.nonce === 'string' &&
     /^[0-9a-f]{24}$/i.test(candidate.nonce)
   );

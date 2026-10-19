@@ -192,7 +192,7 @@ export async function handleRecoveryRequest(request) {
       const timestamp = Math.floor(Date.now() / 1000).toString();
       const publicId = isManifest
         ? `habit-tracker/backups/${code}/full.json`
-        : `habit-tracker/backups/${code}/files/${body.fileId}.bin`;
+        : `habit-tracker/backups/${code}/files/${body.fileId}.json`;
       const params = { invalidate: 'true', overwrite: 'true', public_id: publicId, timestamp };
       return send(request, 200, {
         apiKey: CLOUDINARY_API_KEY,

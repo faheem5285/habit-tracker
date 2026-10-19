@@ -66,7 +66,7 @@ test('file upload signatures validate the asset identifier and return signed upl
   assert.equal(response.status, 200);
   assert.equal(result.apiKey, 'test');
   assert.equal(result.cloudName, 'test-cloud');
-  assert.equal(result.publicId, `habit-tracker/backups/${'A'.repeat(32)}/files/${'b'.repeat(32)}.bin`);
+  assert.equal(result.publicId, `habit-tracker/backups/${'A'.repeat(32)}/files/${'b'.repeat(32)}.json`);
   assert.match(result.signature, /^[0-9a-f]{40}$/);
   assert.match(result.timestamp, /^\d+$/);
 
