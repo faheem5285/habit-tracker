@@ -122,24 +122,38 @@ export function validateVaultEnvelope(value: unknown): VaultEnvelope {
 async function deriveKey(passphrase: string, saltHex: string, iterations: number) {
   const subtle = globalThis.crypto?.subtle;
   if (subtle) {
-    const passphraseKey = await subtle.importKey(
-      'raw',
-      utf8ToBytes(passphrase),
-      'PBKDF2',
-      false,
-      ['deriveBits'],
-    );
-    const derivedBits = await subtle.deriveBits(
-      {
-        name: 'PBKDF2',
-        hash: 'SHA-256',
-        salt: hexToBytes(saltHex),
-        iterations,
-      },
-      passphraseKey,
-      256,
-    );
-    return new Uint8Array(derivedBits);
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const derivedBits = await Promise.race([
+        (async () => {
+          const passphraseKey = await subtle.importKey(
+            'raw',
+            utf8ToBytes(passphrase),
+            'PBKDF2',
+            false,
+            ['deriveBits'],
+          );
+          return subtle.deriveBits(
+            {
+              name: 'PBKDF2',
+              hash: 'SHA-256',
+              salt: hexToBytes(saltHex),
+              iterations,
+            },
+            passphraseKey,
+            256,
+          );
+        })(),
+        new Promise<never>((_resolve, reject) => {
+          timeout = setTimeout(() => reject(new Error('Native key derivation timed out.')), 5_000);
+        }),
+      ]);
+      return new Uint8Array(derivedBits);
+    } catch {
+      // Fall back to the bundled implementation when native Web Crypto is unavailable or stalls.
+    } finally {
+      if (timeout) clearTimeout(timeout);
+    }
   }
 
   return pbkdf2Async(
@@ -155,7 +169,7 @@ async function encryptEntries(
   key: Uint8Array,
   envelope: Pick<VaultEnvelope, 'salt' | 'iterations'>,
 ): Promise<VaultEnvelope> {
-  const nonce = await Crypto.getRandomBytesAsync(12);
+  const nonce = Crypto.getRandomBytes(12);
   const plaintext = utf8ToBytes(JSON.stringify(validatePasswordEntries(entries)));
   const ciphertext = gcm(key, nonce, VAULT_AAD).encrypt(plaintext);
   return {
@@ -174,7 +188,7 @@ export async function createEncryptedVault(passphrase: string, entries: Password
   if (passphrase.length < MIN_MASTER_PASSPHRASE_LENGTH) {
     throw new Error(`Use a master passphrase with at least ${MIN_MASTER_PASSPHRASE_LENGTH} characters.`);
   }
-  const salt = await Crypto.getRandomBytesAsync(16);
+  const salt = Crypto.getRandomBytes(16);
   const saltHex = bytesToHex(salt);
   const iterations = globalThis.crypto?.subtle
     ? VAULT_KDF_ITERATIONS

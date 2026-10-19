@@ -46,6 +46,19 @@ type PasswordVaultContextValue = {
 };
 
 const PasswordVaultContext = createContext<PasswordVaultContextValue | null>(null);
+const VAULT_WRITE_TIMEOUT_MS = 15_000;
+
+function withWriteTimeout<T>(operation: Promise<T>): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout>;
+  const deadline = new Promise<never>((_resolve, reject) => {
+    timeout = setTimeout(() => {
+      reject(new Error(
+        'Saving to the password vault is taking too long. The entry may still finish saving; check the vault before retrying.',
+      ));
+    }, VAULT_WRITE_TIMEOUT_MS);
+  });
+  return Promise.race([operation, deadline]).finally(() => clearTimeout(timeout));
+}
 
 export function PasswordVaultProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
@@ -186,7 +199,7 @@ export function PasswordVaultProvider({ children }: { children: ReactNode }) {
       }
     });
     writeQueue.current = operation;
-    return operation;
+    return withWriteTimeout(operation);
   }, [touch]);
 
   const saveEntry = useCallback((entry: PasswordEntry) => {
