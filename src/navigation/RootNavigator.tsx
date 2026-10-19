@@ -5,9 +5,11 @@ import {
   DarkTheme,
 } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import type { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { Platform, StyleSheet, View } from 'react-native';
+import { PlatformPressable } from '@react-navigation/elements';
+import { Animated, Platform, StyleSheet, View } from 'react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type * as Notifications from 'expo-notifications';
@@ -33,6 +35,46 @@ const HabitsStack = createNativeStackNavigator<HabitsStackParams>();
 const AppStack = createNativeStackNavigator<AppStackParams>();
 const navigationRef = createNavigationContainerRef<AppStackParams>();
 
+const TAB_RADIUS = 14;
+const FLARE_SIZE = 14;
+const BAR_TOP_OVERLAP = 9; // bar paddingTop (8) + item paddingTop (1), so the tab touches the bar's top edge
+
+/**
+ * Chrome-style active tab for a bottom bar: the selected tab is filled with the
+ * screen background and flares outward at the top so it looks like part of the screen.
+ */
+function ChromeTabButton({ children, accessibilityState, style, activeColor, barColor, ...props }: Omit<BottomTabBarButtonProps, 'ref'> & {
+  activeColor: string;
+  barColor: string;
+}) {
+  const selected = Boolean(props['aria-selected'] ?? accessibilityState?.selected);
+  const progress = useRef(new Animated.Value(selected ? 1 : 0)).current;
+
+  useEffect(() => {
+    Animated.timing(progress, { toValue: selected ? 1 : 0, duration: 160, useNativeDriver: false }).start();
+  }, [progress, selected]);
+
+  const backgroundColor = progress.interpolate({ inputRange: [0, 1], outputRange: ['transparent', activeColor] });
+
+  return <PlatformPressable
+    {...props}
+    accessibilityState={accessibilityState}
+    pressColor="transparent"
+    pressOpacity={1}
+    style={[style, styles.tabButton]}
+  >
+    <Animated.View pointerEvents="none" style={[styles.activeTab, { backgroundColor }]}>
+      <Animated.View style={[styles.flare, styles.flareLeft, { backgroundColor: activeColor, opacity: progress }]}>
+        <View style={[styles.flareCut, styles.flareCutLeft, { backgroundColor: barColor }]} />
+      </Animated.View>
+      <Animated.View style={[styles.flare, styles.flareRight, { backgroundColor: activeColor, opacity: progress }]}>
+        <View style={[styles.flareCut, styles.flareCutRight, { backgroundColor: barColor }]} />
+      </Animated.View>
+    </Animated.View>
+    {children}
+  </PlatformPressable>;
+}
+
 function HabitDetailStack() {
   const { colors } = useSettings();
   return <HabitsStack.Navigator screenOptions={{
@@ -56,15 +98,14 @@ function HabitTrackerModule() {
   const insets = useSafeAreaInsets();
   const tabBarStyle = {
     backgroundColor: colors.surface,
-    borderTopColor: colors.border,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopWidth: 0,
     elevation: 0,
-    height: 68 + insets.bottom,
+    width: '100%' as const,
+    height: 76 + insets.bottom,
     paddingTop: 8,
-    paddingBottom: Math.max(insets.bottom, 6),
-    marginHorizontal: 12,
-    marginBottom: 8,
-    borderRadius: 20,
+    paddingBottom: Math.max(insets.bottom, 15),
+    marginHorizontal: 0,
+    marginBottom: 0,
   };
   return <View style={styles.fill}>
     <Tab.Navigator
@@ -78,15 +119,16 @@ function HabitTrackerModule() {
             Analytics: ['stats-chart-outline', 'stats-chart'],
             Settings: ['settings-outline', 'settings'],
           };
-          return <Ionicons name={icons[route.name][focused ? 1 : 0]} size={focused ? 22 : 20} color={color} />;
+          return <Ionicons name={icons[route.name][focused ? 1 : 0]} size={focused ? 22 : 20} color={color} style={{ transform: [{ translateY: -8 }] }} />;
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.muted,
         tabBarLabel: ({ Today: 'Today', Habits: 'Habits', Analytics: 'Insights', Settings: 'Settings' })[route.name],
-        tabBarLabelStyle: { fontSize: 12, fontWeight: '700', lineHeight: 15, marginTop: 3 },
+        tabBarLabelStyle: { fontSize: 12, fontWeight: '700', lineHeight: 15, marginTop: 3, transform: [{ translateY: -8 }] },
         tabBarAllowFontScaling: true,
         tabBarShowLabel: true,
         tabBarLabelPosition: 'below-icon',
+        tabBarButton: ({ ref, ...props }) => <ChromeTabButton {...props} activeColor={colors.background} barColor={colors.surface} />,
         tabBarStyle,
         tabBarHideOnKeyboard: true,
         tabBarItemStyle: { flex: 1, minWidth: 0, paddingTop: 1, paddingBottom: 1 },
@@ -174,4 +216,22 @@ export default function RootNavigator() {
   </View>;
 }
 
-const styles = StyleSheet.create({ fill: { flex: 1 } });
+const styles = StyleSheet.create({
+  fill: { flex: 1 },
+  tabButton: { overflow: 'visible' },
+  activeTab: {
+    position: 'absolute',
+    top: -BAR_TOP_OVERLAP,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderBottomLeftRadius: TAB_RADIUS,
+    borderBottomRightRadius: TAB_RADIUS,
+  },
+  flare: { position: 'absolute', top: 0, width: FLARE_SIZE, height: FLARE_SIZE },
+  flareLeft: { left: -FLARE_SIZE },
+  flareRight: { right: -FLARE_SIZE },
+  flareCut: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
+  flareCutLeft: { borderTopRightRadius: FLARE_SIZE },
+  flareCutRight: { borderTopLeftRadius: FLARE_SIZE },
+});

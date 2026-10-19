@@ -1,12 +1,11 @@
 import { gcm } from '@noble/ciphers/aes';
-import { pbkdf2Async } from '@noble/hashes/pbkdf2';
-import { sha256 } from '@noble/hashes/sha2';
+import { pbkdf2Async } from '@noble/hashes/pbkdf2.js';
+import { sha256 } from '@noble/hashes/sha2.js';
 import {
   bytesToHex,
-  bytesToUtf8,
   hexToBytes,
   utf8ToBytes,
-} from '@noble/hashes/utils';
+} from '@noble/hashes/utils.js';
 import * as Crypto from 'expo-crypto';
 import {
   PASSWORD_VAULT_FORMAT,
@@ -20,6 +19,7 @@ import {
 export const PASSWORD_VAULT_STORAGE_KEY = 'momentum.passwords.encrypted.v1';
 export const PASSWORD_VAULT_TIMEOUT_KEY = 'momentum.passwords.timeout.v1';
 export const VAULT_KDF_ITERATIONS = 600_000;
+const NATIVE_VAULT_KDF_ITERATIONS = 210_000;
 export const MIN_MASTER_PASSPHRASE_LENGTH = 12;
 const MAX_BACKUP_LENGTH = 2_000_000;
 const MAX_VAULT_PLAINTEXT_LENGTH = 900_000;
@@ -120,6 +120,28 @@ export function validateVaultEnvelope(value: unknown): VaultEnvelope {
 }
 
 async function deriveKey(passphrase: string, saltHex: string, iterations: number) {
+  const subtle = globalThis.crypto?.subtle;
+  if (subtle) {
+    const passphraseKey = await subtle.importKey(
+      'raw',
+      utf8ToBytes(passphrase),
+      'PBKDF2',
+      false,
+      ['deriveBits'],
+    );
+    const derivedBits = await subtle.deriveBits(
+      {
+        name: 'PBKDF2',
+        hash: 'SHA-256',
+        salt: hexToBytes(saltHex),
+        iterations,
+      },
+      passphraseKey,
+      256,
+    );
+    return new Uint8Array(derivedBits);
+  }
+
   return pbkdf2Async(
     sha256,
     utf8ToBytes(passphrase),
@@ -154,11 +176,14 @@ export async function createEncryptedVault(passphrase: string, entries: Password
   }
   const salt = await Crypto.getRandomBytesAsync(16);
   const saltHex = bytesToHex(salt);
-  const key = await deriveKey(passphrase, saltHex, VAULT_KDF_ITERATIONS);
+  const iterations = globalThis.crypto?.subtle
+    ? VAULT_KDF_ITERATIONS
+    : NATIVE_VAULT_KDF_ITERATIONS;
+  const key = await deriveKey(passphrase, saltHex, iterations);
   try {
     const envelope = await encryptEntries(entries, key, {
       salt: saltHex,
-      iterations: VAULT_KDF_ITERATIONS,
+      iterations,
     });
     return { envelope, key };
   } catch (error) {
@@ -184,7 +209,7 @@ export async function decryptVaultEnvelope(value: unknown, passphrase: string) {
       hexToBytes(envelope.nonce),
       VAULT_AAD,
     ).decrypt(hexToBytes(envelope.ciphertext));
-    const parsed: unknown = JSON.parse(bytesToUtf8(plaintext));
+    const parsed: unknown = JSON.parse(new TextDecoder().decode(plaintext));
     const entries = validatePasswordEntries(parsed);
     return { envelope, entries, key };
   } catch {

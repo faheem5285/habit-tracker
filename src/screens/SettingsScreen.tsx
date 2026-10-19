@@ -122,9 +122,9 @@ export default function SettingsScreen() {
       const code = await createRecoveryCode(value);
       setRecoveryCode(code);
       setRecoveryBackupReady(false);
-      setCustomRecoveryCode('');
       await syncRecoveryData(code, { habits, logs, dailyNotes, settings });
       setRecoveryBackupReady(true);
+      setCustomRecoveryCode('');
       Alert.alert(
         'Custom recovery backup created',
         'Your backup is ready. Keep this code private; anyone who has it can read your backup.'
@@ -137,7 +137,7 @@ export default function SettingsScreen() {
   const confirmCustomRecovery = () => {
     const code = customRecoveryCode.trim();
     if (!code) {
-      Alert.alert('Enter a recovery code', 'Choose a custom code between 20 and 80 characters.');
+      Alert.alert('Enter a recovery code', 'Choose a custom code between 6 and 80 characters.');
       return;
     }
     if (recoveryCode && recoveryCode !== code) {
@@ -482,7 +482,9 @@ export default function SettingsScreen() {
               {recoveryBackupReady ? 'Recovery Backup Enabled' : recoveryCode ? 'Finish Recovery Setup' : 'Set Up Recovery Code'}
             </Text>
             <Text style={[styles.settingSubtitle, { color: colors.muted }]}>
-              {recoveryBackupReady
+              {recoveryBusy
+                ? 'Encrypting and uploading your backup…'
+                : recoveryBackupReady
                 ? 'A recovery backup is set up. Keep your recovery code safe.'
                 : recoveryCode
                   ? 'Your code is saved, but the first backup needs to finish. Tap to retry.'
@@ -522,7 +524,7 @@ export default function SettingsScreen() {
         <Card style={styles.card}>
           <Text style={styles.settingTitle}>Choose your own recovery code</Text>
           <Text style={[styles.settingSubtitle, { color: colors.muted, marginBottom: 12 }]}>
-            Use 20–80 letters, numbers, hyphens, or underscores. Keep it private and save it somewhere safe.
+            Use 6–80 letters, numbers, hyphens, or underscores. Keep it private and save it somewhere safe.
           </Text>
           <TextField
             label="Custom recovery code"
@@ -649,8 +651,8 @@ const styles = StyleSheet.create({
   customRecoveryButton: { marginTop: 12 },
   recoveryCodeButton: { minHeight: 44, minWidth: 72, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderRadius: 12, paddingHorizontal: 12 },
   recoveryCodeButtonText: { fontSize: 13, fontWeight: '700' },
-  aboutContainer: { alignItems: 'center', marginTop: 24, marginBottom: 10 },
+  aboutContainer: { alignItems: 'center', marginTop: 4, marginBottom: 10 },
   aboutText: { fontSize: 12, fontWeight: '700' },
   aboutSub: { fontSize: 12, marginTop: 4, textAlign: 'center' },
-  dangerSectionTitle: { marginTop: 32 },
+  dangerSectionTitle: { marginTop: 4 },
 });

@@ -10,14 +10,24 @@ const projectRoot = path.resolve(__dirname, '..');
 
 function findWorkspaceRoot(startDir) {
   let dir = startDir;
+  let packageRoot = null;
+
   while (dir !== path.dirname(dir)) {
     if (fs.existsSync(path.join(dir, 'pnpm-workspace.yaml'))) {
       return dir;
     }
+    if (!packageRoot && fs.existsSync(path.join(dir, 'package.json'))) {
+      packageRoot = dir;
+    }
     dir = path.dirname(dir);
   }
+
+  if (packageRoot) {
+    return packageRoot;
+  }
+
   throw new Error(
-    'Could not find workspace root (no pnpm-workspace.yaml found)',
+    'Could not find project root (no package.json or pnpm-workspace.yaml found)',
   );
 }
 

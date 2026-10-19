@@ -8,7 +8,7 @@ export const SPACING = {
   md: 12,
   lg: 16,
   xl: 20,
-  xxl: 24,
+  xxl: 4,
   xxxl: 32,
 } as const;
 
