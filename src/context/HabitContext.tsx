@@ -18,6 +18,7 @@ import {
 } from '../utils/notifications';
 import { useSettings } from './SettingsContext';
 import { getValue, updateLogValueIndex } from '../utils/streaks';
+import { syncRecoveryData } from '../utils/recovery';
 
 export type HabitInput = Omit<Habit, 'id' | 'createdAt' | 'notificationIds' | 'archived'>;
 
@@ -100,7 +101,9 @@ export function HabitProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!loaded) return;
     const timeout = setTimeout(() => {
-      void Promise.all([saveHabits(habits), saveLogs(logs), saveDailyNotes(dailyNotes)]);
+      void Promise.all([saveHabits(habits), saveLogs(logs), saveDailyNotes(dailyNotes)])
+        .then(() => syncRecoveryData())
+        .catch((error) => console.warn('Habit backup sync failed:', error));
     }, 250);
     return () => clearTimeout(timeout);
   }, [loaded, habits, logs, dailyNotes]);

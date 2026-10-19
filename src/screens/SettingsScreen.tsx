@@ -5,13 +5,20 @@ import { useFocusEffect } from '@react-navigation/native';
 import Constants from 'expo-constants';
 import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../components/Themed';
+import Button from '../components/Button';
+import TextField from '../components/TextField';
 import { useSettings } from '../context/SettingsContext';
 import { useHabits } from '../context/HabitContext';
 import { AppPalette } from '../theme';
 import { sendTestNotification, getNotificationPermissionStatus, ensurePermission } from '../utils/notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { RECOVERY_CODE_KEY } from '../utils/storage';
+import { RECOVERY_BACKUP_READY_KEY, RECOVERY_CODE_KEY } from '../utils/storage';
 import { createRecoveryCode, syncRecoveryData } from '../utils/recovery';
+import ScreenHeader from '../components/ScreenHeader';
+import { SCREEN_PADDING, SPACING } from '../ui';
+import { loadLedger } from '../modules/loans/storage';
+import { loadExpenses } from '../modules/expenses/storage';
+import Card from '../components/Card';
 
 type Option<T> = { label: string; value: T; icon?: keyof typeof Ionicons.glyphMap };
 
@@ -48,7 +55,7 @@ function Chips<T extends string | number>({
             ]}
             onPress={() => onChange(option.value)}
           >
-            {option.icon && <Ionicons name={option.icon} size={15} color={colors.primary} />}
+            {option.icon && <Ionicons name={option.icon} size={18} color={colors.primary} />}
             <Text
               style={[
                 styles.chipText,
@@ -73,24 +80,78 @@ export default function SettingsScreen() {
   const [updatingNotifications, setUpdatingNotifications] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
   const [recoveryCode, setRecoveryCode] = useState<string | null>(null);
+  const [recoveryBackupReady, setRecoveryBackupReady] = useState(false);
+  const [showRecoveryCode, setShowRecoveryCode] = useState(false);
   const [recoveryBusy, setRecoveryBusy] = useState(false);
+  const [customRecoveryCode, setCustomRecoveryCode] = useState('');
 
   useFocusEffect(useCallback(() => {
     let active = true;
-    void AsyncStorage.getItem(RECOVERY_CODE_KEY).then((code) => { if (active) setRecoveryCode(code); });
+    void Promise.all([
+      AsyncStorage.getItem(RECOVERY_CODE_KEY),
+      AsyncStorage.getItem(RECOVERY_BACKUP_READY_KEY),
+    ]).then(([code, backupReady]) => {
+      if (!active) return;
+      setRecoveryCode(code);
+      setRecoveryBackupReady(Boolean(code && backupReady === 'true'));
+    }).catch((error) => console.warn('Could not read recovery status:', error));
     return () => { active = false; };
   }, []));
 
   const setupRecovery = async () => {
     setRecoveryBusy(true);
+    const alreadyReady = recoveryBackupReady;
+    const alreadyHadCode = Boolean(recoveryCode);
     try {
       const code = recoveryCode || await createRecoveryCode();
       setRecoveryCode(code);
-      await syncRecoveryData(code);
-      Alert.alert(recoveryCode ? 'Backup is up to date' : 'Recovery code created', `Save this code somewhere safe. It is required after reinstall:\n\n${code}\n\nYour backup is plain JSON in Cloudinary. Anyone with this code can read it.`, [{ text: 'Share / save code', onPress: () => { void Share.share({ title: 'Habit Tracker recovery code', message: `My Habit Tracker recovery code: ${code}` }); } }, { text: 'OK' }]);
+      await syncRecoveryData(code, { habits, logs, dailyNotes, settings });
+      setRecoveryBackupReady(true);
+      Alert.alert(
+        alreadyReady ? 'Backup is up to date' : alreadyHadCode ? 'Recovery backup completed' : 'Recovery code created',
+        'Your backup is ready. Anyone with your recovery code can read it, so store the code privately.'
+      );
     } catch (error) {
       Alert.alert('Could not set up recovery', error instanceof Error ? error.message : 'Please try again.');
     } finally { setRecoveryBusy(false); }
+  };
+
+  const saveCustomRecovery = async (value: string) => {
+    setRecoveryBusy(true);
+    try {
+      const code = await createRecoveryCode(value);
+      setRecoveryCode(code);
+      setRecoveryBackupReady(false);
+      await syncRecoveryData(code, { habits, logs, dailyNotes, settings });
+      setRecoveryBackupReady(true);
+      setCustomRecoveryCode('');
+      Alert.alert(
+        'Custom recovery backup created',
+        'Your backup is ready. Keep this code private; anyone who has it can read your backup.'
+      );
+    } catch (error) {
+      Alert.alert('Could not set up recovery', error instanceof Error ? error.message : 'Please try again.');
+    } finally { setRecoveryBusy(false); }
+  };
+
+  const confirmCustomRecovery = () => {
+    const code = customRecoveryCode.trim();
+    if (!code) {
+      Alert.alert('Enter a recovery code', 'Choose a custom code between 6 and 80 characters.');
+      return;
+    }
+    if (recoveryCode && recoveryCode !== code) {
+      Alert.alert(
+        'Replace this device’s recovery code?',
+        'This changes the code used for future backups on this device. Your existing backup will still be available with its old code.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Use custom code', style: 'destructive', onPress: () => void saveCustomRecovery(code) },
+        ]
+      );
+      return;
+    }
+    void saveCustomRecovery(code);
   };
 
   const checkStatus = useCallback(async () => {
@@ -108,26 +169,40 @@ export default function SettingsScreen() {
     };
   }, []));
 
-  const exportData = () => {
-    Share.share({
-      title: 'Habit Tracker Backup',
-      message: JSON.stringify({ habits, logs, dailyNotes }, null, 2),
-    });
+  const exportData = async () => {
+    try {
+      const [loans, expenses] = await Promise.all([loadLedger(), loadExpenses()]);
+      await Share.share({
+        title: 'Momentum Backup',
+        message: JSON.stringify({ habits, logs, dailyNotes, settings, loans, expenses }, null, 2),
+      });
+    } catch (error) {
+      Alert.alert('Could not export backup', error instanceof Error ? error.message : 'Please try again.');
+    }
+  };
+
+  const copyRecoveryCode = async () => {
+    if (!recoveryCode) return;
+    try {
+      await Share.share({ title: 'Momentum recovery code', message: recoveryCode });
+    } catch (error) {
+      Alert.alert('Could not share recovery code', error instanceof Error ? error.message : 'Please try again.');
+    }
   };
 
   const confirmReset = () => {
     Alert.alert(
-      'Reset All Data?',
-      'This will permanently delete all your habits, logs, streaks, and journal notes. This action cannot be undone.',
+      'Reset Habit Data?',
+      'This permanently deletes your habits, check-ins, and reflection notes. Your loans, expenses, budgets, and settings will stay unchanged.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Reset Everything',
+          text: 'Reset Habit Data',
           style: 'destructive',
           onPress: async () => {
             try {
               await resetAll();
-              Alert.alert('Reset Complete', 'All data has been reset.');
+              Alert.alert('Reset Complete', 'Your habit data has been reset.');
             } catch (err: any) {
               Alert.alert('Error', err?.message || 'Could not reset data.');
             }
@@ -243,34 +318,32 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View style={styles.pageHeading}>
-          <Text style={[styles.eyebrow, { color: colors.primary }]}>PREFERENCES</Text>
-          <Text style={styles.title}>Settings</Text>
-          <Text style={[styles.intro, { color: colors.muted }]}>
-            Personalize your habit tracking experience, reminders, and themes.
-          </Text>
-        </View>
+        <ScreenHeader
+          title="Settings"
+          subtitle="Make Momentum yours."
+          style={styles.pageHeading}
+        />
 
         {/* Notification Status Banner */}
         <View
           style={[
             styles.notifStatusBanner,
             {
-              backgroundColor: notificationsReady ? colors.successSoft : colors.accentSoft,
-              borderColor: notificationsReady ? colors.success + '44' : colors.accent + '44',
+              backgroundColor: notificationsReady ? colors.primarySoft : colors.accentSoft,
+              borderColor: notificationsReady ? colors.primary : colors.accent + '44',
             },
           ]}
         >
           <Ionicons
             name={notificationsReady ? 'checkmark-circle' : 'alert-circle'}
             size={22}
-            color={notificationsReady ? colors.success : colors.accent}
+            color={notificationsReady ? colors.primary : colors.accent}
           />
           <View style={{ flex: 1 }}>
             <Text
               style={[
                 styles.notifStatusTitle,
-                { color: notificationsReady ? colors.success : colors.accent },
+                { color: notificationsReady ? colors.text : colors.accent },
               ]}
             >
               {notificationsReady
@@ -304,7 +377,7 @@ export default function SettingsScreen() {
 
         {/* Notifications Section */}
         <Text style={styles.sectionTitle}>Reminders & Notifications</Text>
-        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Card style={styles.card}>
           <View style={styles.settingRow}>
             <View style={[styles.leadingIcon, { backgroundColor: colors.primarySoft }]}>
               <Ionicons name="notifications" size={20} color={colors.primary} />
@@ -359,11 +432,11 @@ export default function SettingsScreen() {
               {sendingTest ? 'Sending Test...' : 'Send Test Notification Now'}
             </Text>
           </TouchableOpacity>
-        </View>
+        </Card>
 
         {/* Appearance Section */}
         <Text style={styles.sectionTitle}>Appearance & Theme</Text>
-        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Card style={styles.card}>
           <Text style={styles.settingTitle}>Color Mode</Text>
           <Text style={[styles.settingSubtitle, { color: colors.muted, marginBottom: 12 }]}>
             Choose between dark OLED, light, or auto system theme.
@@ -371,21 +444,21 @@ export default function SettingsScreen() {
           <Chips
             colors={colors}
             options={[
-              { label: 'Dark Mode', value: 'dark', icon: 'moon-outline' },
-              { label: 'Light Mode', value: 'light', icon: 'sunny-outline' },
+              { label: 'Dark', value: 'dark', icon: 'moon-outline' },
+              { label: 'Light', value: 'light', icon: 'sunny-outline' },
               { label: 'System', value: 'system', icon: 'phone-portrait-outline' },
             ]}
             value={settings.theme}
             onChange={(value) => update({ theme: value })}
           />
-        </View>
+        </Card>
 
         {/* Calendar Section */}
         <Text style={styles.sectionTitle}>Calendar Start Day</Text>
-        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Card style={styles.card}>
           <Text style={styles.settingTitle}>First Day of the Week</Text>
           <Text style={[styles.settingSubtitle, { color: colors.muted, marginBottom: 12 }]}>
-            Affects weekly completion matrix and horizontal scroller.
+            Choose which day your week starts on.
           </Text>
           <Chips
             colors={colors}
@@ -396,71 +469,118 @@ export default function SettingsScreen() {
             value={settings.weekStartsOn}
             onChange={(value) => update({ weekStartsOn: value as 0 | 1 })}
           />
-        </View>
+        </Card>
 
         {/* Data & Privacy */}
         <Text style={styles.sectionTitle}>Data & Privacy</Text>
-        <TouchableOpacity
-          activeOpacity={0.8}
-          disabled={recoveryBusy}
-          style={[styles.actionRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={setupRecovery}
-        >
+        <Card onPress={setupRecovery} disabled={recoveryBusy} style={styles.actionRow}>
           <View style={[styles.leadingIcon, { backgroundColor: colors.primarySoft }]}>
             <Ionicons name="cloud-upload-outline" size={20} color={colors.primary} />
           </View>
           <View style={styles.settingCopy}>
-            <Text style={styles.settingTitle}>{recoveryCode ? 'Recovery Code Enabled' : 'Set Up Recovery Code'}</Text>
+            <Text style={styles.settingTitle}>
+              {recoveryBackupReady ? 'Recovery Backup Enabled' : recoveryCode ? 'Finish Recovery Setup' : 'Set Up Recovery Code'}
+            </Text>
             <Text style={[styles.settingSubtitle, { color: colors.muted }]}>
-              {recoveryCode ? 'Your app data syncs to a plain JSON Cloudinary backup.' : 'Create a code to restore your data after reinstall.'}
+              {recoveryBackupReady
+                ? 'A recovery backup is set up. Keep your recovery code safe.'
+                : recoveryCode
+                  ? 'Your code is saved, but the first backup needs to finish. Tap to retry.'
+                  : 'Create a code to restore your data after reinstall.'}
             </Text>
           </View>
           {recoveryBusy
             ? <ActivityIndicator size="small" color={colors.primary} />
             : <Ionicons name="chevron-forward" size={18} color={colors.primary} />}
-        </TouchableOpacity>
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={[styles.actionRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={exportData}
-        >
+        </Card>
+        {recoveryCode && (
+          <Card style={styles.recoveryCodeCard}>
+            <Text style={styles.settingTitle}>Your recovery code</Text>
+            <Text selectable style={[styles.recoveryCode, { color: colors.text }]}>
+              {showRecoveryCode ? recoveryCode : '•'.repeat(recoveryCode.length)}
+            </Text>
+            {!recoveryBackupReady && (
+              <Text style={[styles.settingSubtitle, { color: colors.accent, marginTop: 8 }]}>
+                This code does not have a completed backup yet.
+              </Text>
+            )}
+            {recoveryBackupReady && (
+              <Text style={[styles.settingSubtitle, { color: colors.textSecondary, marginTop: 8 }]}>
+                Anyone with this code can read your backup. Share it only with people you trust.
+              </Text>
+            )}
+            <View style={styles.recoveryCodeActions}>
+              <TouchableOpacity accessibilityRole="button" style={[styles.recoveryCodeButton, { borderColor: colors.border }]} onPress={() => setShowRecoveryCode((visible) => !visible)}>
+                <Text style={[styles.recoveryCodeButtonText, { color: colors.primary }]}>{showRecoveryCode ? 'Hide' : 'Show'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity accessibilityRole="button" style={[styles.recoveryCodeButton, { borderColor: colors.border }]} onPress={() => void copyRecoveryCode()}>
+                <Text style={[styles.recoveryCodeButtonText, { color: colors.primary }]}>Share</Text>
+              </TouchableOpacity>
+            </View>
+          </Card>
+        )}
+        <Card style={styles.card}>
+          <Text style={styles.settingTitle}>Choose your own recovery code</Text>
+          <Text style={[styles.settingSubtitle, { color: colors.muted, marginBottom: 12 }]}>
+            Use 6–80 letters, numbers, hyphens, or underscores. Keep it private and save it somewhere safe.
+          </Text>
+          <TextField
+            label="Custom recovery code"
+            value={customRecoveryCode}
+            onChangeText={setCustomRecoveryCode}
+            placeholder="Enter a code you will remember"
+            autoCapitalize="none"
+            autoCorrect={false}
+            secureTextEntry
+            maxLength={80}
+            editable={!recoveryBusy}
+            accessibilityLabel="Custom recovery code"
+          />
+          <Button
+            label="Create backup with this code"
+            onPress={confirmCustomRecovery}
+            loading={recoveryBusy}
+            disabled={!customRecoveryCode.trim()}
+            style={styles.customRecoveryButton}
+          />
+        </Card>
+        <Card onPress={exportData} style={styles.actionRow}>
           <View style={[styles.leadingIcon, { backgroundColor: colors.primarySoft }]}>
             <Ionicons name="download-outline" size={20} color={colors.primary} />
           </View>
           <View style={styles.settingCopy}>
             <Text style={styles.settingTitle}>Export Backup</Text>
             <Text style={[styles.settingSubtitle, { color: colors.muted }]}>
-              Save a JSON copy of all your habits and logs.
+              Save a JSON copy of your habits, finances, notes, and settings.
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={colors.primary} />
-        </TouchableOpacity>
-
-
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={[styles.actionRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={confirmReset}
-        >
+        </Card>
+        <Text style={[styles.sectionTitle, styles.dangerSectionTitle]}>Danger zone</Text>
+        <Card onPress={confirmReset} style={styles.actionRow}>
           <View style={[styles.leadingIcon, { backgroundColor: colors.dangerSoft }]}>
-            <Ionicons name="trash-outline" size={20} color={colors.primary} />
+            <Ionicons name="trash-outline" size={20} color={colors.danger} />
           </View>
           <View style={styles.settingCopy}>
-            <Text style={[styles.settingTitle, { color: colors.danger }]}>Reset All Data</Text>
+              <Text style={[styles.settingTitle, { color: colors.danger }]}>Reset Habit Data</Text>
             <Text style={[styles.settingSubtitle, { color: colors.muted }]}>
               Delete all habits, check-ins, and journal history.
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={colors.primary} />
-        </TouchableOpacity>
+        </Card>
 
         {/* App Info Footer */}
         <View style={styles.aboutContainer}>
           <Text style={[styles.aboutText, { color: colors.muted }]}>
-            Habit Tracker · v{Constants.expoConfig?.version ?? '1.0.0'}
+            Momentum · v{Constants.expoConfig?.version ?? '1.0.0'}
           </Text>
           <Text style={[styles.aboutSub, { color: colors.muted }]}>
-            Built with 100% offline privacy · Your data stays on your device
+            {recoveryBackupReady
+              ? 'Your data is backed up with your recovery code.'
+              : recoveryCode
+                ? 'Your first backup is not complete yet.'
+                : 'Your data stays on this device unless you turn on backup.'}
           </Text>
         </View>
       </ScrollView>
@@ -470,11 +590,8 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
-  container: { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 50 },
-  pageHeading: { marginBottom: 16 },
-  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1.5 },
-  title: { fontSize: 28, fontWeight: '800', letterSpacing: -0.6, marginTop: 2 },
-  intro: { fontSize: 13, lineHeight: 18, marginTop: 4 },
+  container: { paddingHorizontal: SCREEN_PADDING, paddingTop: 0, paddingBottom: 64 },
+  pageHeading: { marginHorizontal: -SCREEN_PADDING, marginBottom: 16 },
   notifStatusBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -485,15 +602,15 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   notifStatusTitle: { fontSize: 13, fontWeight: '800' },
-  notifStatusDesc: { fontSize: 11, marginTop: 1, lineHeight: 15 },
+  notifStatusDesc: { fontSize: 12, marginTop: 1, lineHeight: 16 },
   fixBtn: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
   },
   fixBtnText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
-  sectionTitle: { fontSize: 16, fontWeight: '800', marginTop: 16, marginBottom: 10 },
-  card: { borderWidth: 1.5, borderRadius: 20, padding: 16, marginBottom: 10 },
+  sectionTitle: { fontSize: 16, fontWeight: '800', marginTop: SPACING.xxl, marginBottom: SPACING.md },
+  card: { marginBottom: SPACING.md },
   settingRow: { flexDirection: 'row', alignItems: 'center' },
   leadingIcon: {
     width: 42,
@@ -505,7 +622,7 @@ const styles = StyleSheet.create({
   },
   settingCopy: { flex: 1, paddingRight: 8 },
   settingTitle: { fontSize: 15, fontWeight: '700' },
-  settingSubtitle: { fontSize: 11, lineHeight: 16, marginTop: 2 },
+  settingSubtitle: { fontSize: 12, lineHeight: 17, marginTop: 2 },
   divider: { height: 1, marginVertical: 14 },
   testNotifBtn: {
     flexDirection: 'row',
@@ -519,17 +636,21 @@ const styles = StyleSheet.create({
   },
   testNotifText: { fontSize: 13, fontWeight: '700' },
   chips: { flexDirection: 'row', borderRadius: 13, padding: 4, gap: 4 },
-  chip: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10 },
+  chip: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, minHeight: 44, paddingHorizontal: 4, borderRadius: 10 },
   chipText: { fontSize: 12, fontWeight: '600' },
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 20,
-    borderWidth: 1.5,
-    padding: 14,
     marginBottom: 10,
   },
-  aboutContainer: { alignItems: 'center', marginTop: 24, marginBottom: 10 },
+  recoveryCodeCard: { marginTop: 10, marginBottom: 10 },
+  recoveryCode: { fontSize: 14, fontWeight: '700', letterSpacing: 1, marginTop: 8 },
+  recoveryCodeActions: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  customRecoveryButton: { marginTop: 12 },
+  recoveryCodeButton: { minHeight: 44, minWidth: 72, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderRadius: 12, paddingHorizontal: 12 },
+  recoveryCodeButtonText: { fontSize: 13, fontWeight: '700' },
+  aboutContainer: { alignItems: 'center', marginTop: 4, marginBottom: 10 },
   aboutText: { fontSize: 12, fontWeight: '700' },
-  aboutSub: { fontSize: 11, marginTop: 4, textAlign: 'center' },
+  aboutSub: { fontSize: 12, marginTop: 4, textAlign: 'center' },
+  dangerSectionTitle: { marginTop: 4 },
 });

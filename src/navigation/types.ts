@@ -11,13 +11,15 @@ export type RootTabParams = {
   Today: undefined;
   Habits: NavigatorScreenParams<HabitsStackParams> | undefined;
   Analytics: undefined;
-  Challenges: undefined;
   Settings: undefined;
 };
 
 export type AppStackParams = {
   ModuleLauncher: undefined;
   HabitTracker: NavigatorScreenParams<RootTabParams> | undefined;
+  Challenges: undefined;
   LoanLedger: undefined;
   Expenses: undefined;
+  PasswordManager: undefined;
+  Files: undefined;
 };

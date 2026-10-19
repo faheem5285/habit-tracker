@@ -19,9 +19,7 @@ type NotificationsModule = {
   requestPermissionsAsync: typeof import('expo-notifications/build/NotificationPermissions').requestPermissionsAsync;
   scheduleNotificationAsync: typeof import('expo-notifications/build/scheduleNotificationAsync').scheduleNotificationAsync;
   cancelScheduledNotificationAsync: typeof import('expo-notifications/build/cancelScheduledNotificationAsync').cancelScheduledNotificationAsync;
-  setNotificationChannelAsync: typeof import('expo-notifications/build/setNotificationChannelAsync').setNotificationChannelAsync;
   SchedulableTriggerInputTypes: typeof import('expo-notifications/build/Notifications.types').SchedulableTriggerInputTypes;
-  AndroidImportance: typeof import('expo-notifications/build/NotificationChannelManager.types').AndroidImportance;
   IosAuthorizationStatus: typeof import('expo-notifications/build/NotificationPermissions.types').IosAuthorizationStatus;
 };
 let notificationsModule: NotificationsModule | null = null;
@@ -30,14 +28,12 @@ let handlerInstalled = false;
 async function getN(): Promise<NotificationsModule | null> {
   if (Platform.OS === 'web') return null;
   if (!notificationsModule) {
-    const [handler, permissions, scheduler, cancel, channels, triggers, channelTypes, permissionTypes] = await Promise.all([
+    const [handler, permissions, scheduler, cancel, triggers, permissionTypes] = await Promise.all([
       import('expo-notifications/build/NotificationsHandler'),
       import('expo-notifications/build/NotificationPermissions'),
       import('expo-notifications/build/scheduleNotificationAsync'),
       import('expo-notifications/build/cancelScheduledNotificationAsync'),
-      import('expo-notifications/build/setNotificationChannelAsync'),
       import('expo-notifications/build/Notifications.types'),
-      import('expo-notifications/build/NotificationChannelManager.types'),
       import('expo-notifications/build/NotificationPermissions.types'),
     ]);
     notificationsModule = {
@@ -46,9 +42,7 @@ async function getN(): Promise<NotificationsModule | null> {
       requestPermissionsAsync: permissions.requestPermissionsAsync,
       scheduleNotificationAsync: scheduler.scheduleNotificationAsync,
       cancelScheduledNotificationAsync: cancel.cancelScheduledNotificationAsync,
-      setNotificationChannelAsync: channels.setNotificationChannelAsync,
       SchedulableTriggerInputTypes: triggers.SchedulableTriggerInputTypes,
-      AndroidImportance: channelTypes.AndroidImportance,
       IosAuthorizationStatus: permissionTypes.IosAuthorizationStatus,
     };
   }
@@ -68,30 +62,6 @@ async function getN(): Promise<NotificationsModule | null> {
 }
 
 type Reminder = { id?: string; name: string; icon: string; days: number[]; reminderTimes: string[]; scheduledReminders?: string[] };
-
-function getReminderChannelId() {
-  return reminderSoundsEnabled ? 'habits-sound' : 'habits-silent';
-}
-
-/**
- * Configure Android notification channel with high priority
- */
-export async function setupNotificationChannel(): Promise<void> {
-  const N = await getN();
-  if (!N) return;
-  if (Platform.OS === 'android') {
-    const channelId = getReminderChannelId();
-    await N.setNotificationChannelAsync(channelId, {
-      name: 'Habit Reminders',
-      description: 'Daily reminders for scheduled habits',
-      importance: N.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 200, 250],
-      lightColor: '#6366F1',
-      enableVibrate: true,
-      ...(!reminderSoundsEnabled ? { sound: null } : {}),
-    });
-  }
-}
 
 /**
  * Check permission status
@@ -119,7 +89,6 @@ export async function ensurePermission(): Promise<boolean> {
   const N = await getN();
   if (!N) return false;
   try {
-    await setupNotificationChannel();
     const current = await N.getPermissionsAsync();
     if (
       current.granted ||
@@ -170,7 +139,6 @@ export async function scheduleLoanNotifications(title: string, dueDate: string, 
   const due = new Date(`${dueDate}T09:00:00`);
   if (!Number.isFinite(due.getTime())) return [];
   const ids: string[] = [];
-  const channelId = getReminderChannelId();
   for (const [days, label] of [[1, 'due tomorrow'], [0, 'due today']] as const) {
     const date = new Date(due);
     date.setDate(date.getDate() - days);
@@ -178,7 +146,7 @@ export async function scheduleLoanNotifications(title: string, dueDate: string, 
     try {
       ids.push(await N.scheduleNotificationAsync({
         content: { title: `Loan ${label}`, body: title, data: { loanId }, ...(Platform.OS === 'ios' ? { sound: reminderSoundsEnabled ? 'default' : false } : {}) },
-        trigger: { type: N.SchedulableTriggerInputTypes.DATE, date, channelId },
+        trigger: { type: N.SchedulableTriggerInputTypes.DATE, date },
       }));
     } catch (error) {
       await cancelHabitNotifications(ids);
@@ -194,10 +162,9 @@ export async function schedulePurchaseNotification(title: string, reminderDate: 
   if (!await ensurePermission()) return [];
   const date = new Date(`${reminderDate}T09:00:00`);
   if (!Number.isFinite(date.getTime()) || date.getTime() <= Date.now()) return [];
-  const channelId = getReminderChannelId();
   const id = await N.scheduleNotificationAsync({
     content: { title: 'Planned purchase reminder', body: title, data: { purchaseReminderId }, ...(Platform.OS === 'ios' ? { sound: reminderSoundsEnabled ? 'default' : false } : {}) },
-    trigger: { type: N.SchedulableTriggerInputTypes.DATE, date, channelId },
+    trigger: { type: N.SchedulableTriggerInputTypes.DATE, date },
   });
   return [id];
 }
@@ -226,8 +193,6 @@ export async function scheduleHabitNotifications(habit: Reminder): Promise<strin
     ...(Platform.OS === 'ios' ? { sound: reminderSoundsEnabled ? 'default' : false } : {}),
     data: { habitId: habit.id, habitName: habit.name },
   };
-  const channelId = getReminderChannelId();
-
   try {
     for (const [reminderIndex, time] of reminderTimes.entries()) {
       const [hour, minute] = time.split(':').map(Number);
@@ -242,7 +207,6 @@ export async function scheduleHabitNotifications(habit: Reminder): Promise<strin
             type: N.SchedulableTriggerInputTypes.DAILY,
             hour,
             minute,
-            channelId,
           },
         });
         ids.push(id);
@@ -257,7 +221,6 @@ export async function scheduleHabitNotifications(habit: Reminder): Promise<strin
               weekday,
               hour,
               minute,
-              channelId,
             },
           });
           ids.push(id);
@@ -273,7 +236,6 @@ export async function scheduleHabitNotifications(habit: Reminder): Promise<strin
         trigger: {
           type: N.SchedulableTriggerInputTypes.DATE,
           date,
-          channelId,
         },
       });
       ids.push(id);
@@ -314,7 +276,6 @@ export async function sendTestNotification(): Promise<boolean> {
         type: N.SchedulableTriggerInputTypes.TIME_INTERVAL,
         seconds: 1,
         repeats: false,
-        channelId: getReminderChannelId(),
       },
     });
     return true;

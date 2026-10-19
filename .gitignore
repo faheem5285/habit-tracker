@@ -10,7 +10,8 @@ web-build/
 expo-env.d.ts
 
 # Native
-.kotlin/
+ios/
+android/
 *.orig.*
 *.jks
 *.p8
@@ -31,15 +32,10 @@ yarn-error.*
 *.pem
 
 # local env files
-/.env
 .env*.local
-/server/.env
-/server/.env.*
-!/server/.env.example
 
 # typescript
 *.tsbuildinfo
+.vercel
 
-# generated native folders
-/ios
-/android
+.env

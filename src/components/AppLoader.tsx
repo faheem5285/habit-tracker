@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Animated, Easing, StyleSheet, Text, View, useColorScheme } from 'react-native';
+import { Animated, Easing, Platform, StyleSheet, Text, View, useColorScheme } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import { palette } from '../theme';
 
@@ -17,7 +17,12 @@ export function HabitLoader({ size = 140, label, scheme }: Props) {
 
   useEffect(() => {
     const spinLoop = Animated.loop(
-      Animated.timing(spin, { toValue: 1, duration: 1600, easing: Easing.linear, useNativeDriver: true })
+      Animated.timing(spin, {
+        toValue: 1,
+        duration: 1600,
+        easing: Easing.linear,
+        useNativeDriver: Platform.OS !== 'web',
+      })
     );
     spinLoop.start();
     return () => {
@@ -64,8 +69,7 @@ export function HabitLoader({ size = 140, label, scheme }: Props) {
                 strokeLinecap="round"
                 fill="none"
                 strokeDasharray={`${circumference * 0.66} ${circumference}`}
-                rotation="-50"
-                origin="100, 114"
+                transform="rotate(-50 100 114)"
               />
             </Svg>
           </Animated.View>
@@ -109,9 +113,12 @@ export function LoaderScreen({
   backgroundOpacity?: number;
   transparent?: boolean;
 }) {
+  const system = useColorScheme();
+  const c = palette[scheme ?? (system === 'dark' ? 'dark' : 'light')];
+
   return (
     <View style={styles.screen}>
-      {!transparent && <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.screenBackdrop, { opacity: backgroundOpacity }]} />}
+      {!transparent && <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: c.background, opacity: backgroundOpacity }]} />}
       <HabitLoader size={140} label={label} scheme={scheme} />
     </View>
   );
@@ -120,6 +127,5 @@ export function LoaderScreen({
 const styles = StyleSheet.create({
   wrap: { alignItems: 'center', justifyContent: 'center' },
   screen: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent' },
-  screenBackdrop: { backgroundColor: '#fff' },
   label: { marginTop: 14, fontSize: 14, fontWeight: '500' },
 });

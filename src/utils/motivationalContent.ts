@@ -20,11 +20,3 @@ export const motivation = {
   },
   achievement(title: string) { return `You earned ${title}. Consistency is taking shape.`; },
 } as const;
-
-export const appCopy = {
-  onboarding: [
-    { emoji: '✓', title: 'Make room for what matters', body: 'Turn good intentions into small actions you can repeat, one day at a time.' },
-    { emoji: '↗', title: 'Notice how far you have come', body: 'Your check-ins and patterns make steady progress easier to see.' },
-    { emoji: '♧', title: 'Get a gentle nudge', body: 'Choose reminder times that fit your day. You can change them whenever you need.' },
-  ],
-};

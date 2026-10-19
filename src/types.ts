@@ -9,6 +9,7 @@ export type Habit = {
   color: string;
   type: HabitType;
   target: number; // 1 for yesno, e.g. 5 for count/prayers
+  weeklyGoal?: number;
   unit?: string; // e.g. 'glasses', 'pages', 'mins', 'times'
   category?: string; // 'health' | 'fitness' | 'productivity' | 'mind' | 'learning' | 'other'
   timeOfDay?: TimeOfDay;

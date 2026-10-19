@@ -1,5 +1,4 @@
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
 import RootNavigator from './src/navigation/RootNavigator';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import RecoveryStartScreen from './src/screens/RecoveryStartScreen';
@@ -11,17 +10,19 @@ import { hasLocalAppData, RECOVERY_STARTED_KEY } from './src/utils/storage';
 import { syncRecoveryData } from './src/utils/recovery';
 import { LoaderScreen } from './src/components/AppLoader';
 import { useColorScheme } from 'react-native';
+import { PasswordVaultProvider } from './src/modules/passwords/PasswordVaultContext';
 
 function Gate() {
   const { settings, loaded, isDark } = useSettings();
   const { habits, logs, dailyNotes, loaded: habitsLoaded } = useHabits();
   useEffect(() => {
     if (!loaded || !habitsLoaded) return;
-    const timer = setTimeout(() => {
-      void syncRecoveryData().catch((error) => console.warn('Recovery backup sync failed:', error));
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, [loaded, habitsLoaded, habits, logs, dailyNotes]);
+    const timeout = setTimeout(() => {
+      void syncRecoveryData(undefined, { habits, logs, dailyNotes, settings })
+        .catch((error) => console.warn('Recovery backup sync failed:', error));
+    }, 1200);
+    return () => clearTimeout(timeout);
+  }, [loaded, habitsLoaded, settings, habits, logs, dailyNotes]);
   if (!loaded || !habitsLoaded) return <LoaderScreen scheme={isDark ? 'dark' : 'light'} />;
   return (
     <>
@@ -52,13 +53,17 @@ function StartupGate() {
       </SettingsProvider>
     );
   }
-  return <SettingsProvider><HabitProvider><Gate /></HabitProvider></SettingsProvider>;
+  return (
+    <SettingsProvider>
+      <HabitProvider>
+        <PasswordVaultProvider>
+          <Gate />
+        </PasswordVaultProvider>
+      </HabitProvider>
+    </SettingsProvider>
+  );
 }
 
 export default function App() {
-  return (
-    <SafeAreaProvider>
-      <StartupGate />
-    </SafeAreaProvider>
-  );
+  return <StartupGate />;
 }

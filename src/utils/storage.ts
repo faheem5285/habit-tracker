@@ -3,6 +3,7 @@ import { Habit, Log, Settings, DEFAULT_SETTINGS } from '../types';
 
 const KEYS = { habits: 'habits', logs: 'logs', settings: 'settings', notes: 'dailyNotes' };
 export const RECOVERY_CODE_KEY = 'recoveryCode';
+export const RECOVERY_BACKUP_READY_KEY = 'recoveryBackupReady';
 export const RECOVERY_STARTED_KEY = 'recoveryStarted';
 
 async function load<T>(key: string, fallback: T): Promise<T> {
@@ -49,10 +50,11 @@ export async function restoreAllAppData(data: Awaited<ReturnType<typeof readAllA
 }
 
 export async function hasLocalAppData() {
-  const [habits, logs, notes, settings, started] = await Promise.all([
+  const [habits, logs, notes, settings, started, passwordVault] = await Promise.all([
     AsyncStorage.getItem(KEYS.habits), AsyncStorage.getItem(KEYS.logs),
     AsyncStorage.getItem(KEYS.notes), AsyncStorage.getItem(KEYS.settings),
     AsyncStorage.getItem(RECOVERY_STARTED_KEY),
+    AsyncStorage.getItem('momentum.passwords.encrypted.v1'),
   ]);
-  return Boolean(started || habits || logs || notes || settings);
+  return Boolean(started || habits || logs || notes || settings || passwordVault);
 }

@@ -1,46 +1,54 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text } from '../components/Themed';
 import { restoreWithRecoveryCode } from '../utils/recovery';
+import { useSettings } from '../context/SettingsContext';
+import TextField from '../components/TextField';
+import Button from '../components/Button';
+import { appCopy } from '../copy';
 
 export default function RecoveryStartScreen({ onStartFresh, onRestored }: { onStartFresh: () => void; onRestored: () => void }) {
+  const { colors } = useSettings();
+  const copy = appCopy.recoveryStart;
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const restore = async () => {
-    if (!code.trim()) { Alert.alert('Enter your recovery code'); return; }
+    if (!code.trim()) { Alert.alert(copy.missingCode); return; }
     setBusy(true);
     try { await restoreWithRecoveryCode(code); onRestored(); }
-    catch (error) { Alert.alert('Could not restore data', error instanceof Error ? error.message : 'Check the code and try again.'); }
+    catch (error) { Alert.alert(copy.restoreFailedTitle, error instanceof Error ? error.message : copy.restoreFailedMessage); }
     finally { setBusy(false); }
   };
   return (
-    <SafeAreaView style={styles.screen}>
-      <View style={styles.content}>
-        <Text style={styles.title}>Recover your data</Text>
-        <Text style={styles.description}>Enter the recovery code you saved to validate it and download your habits, check-ins, notes, and settings from Cloudinary.</Text>
-        <TextInput
+    <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]}>
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+      >
+        <Text style={[styles.title, { color: colors.text }]}>{copy.title}</Text>
+        <Text style={[styles.description, { color: colors.textSecondary }]}>{copy.description}</Text>
+        <TextField
+          label={copy.codeLabel}
           autoCapitalize="none"
           autoCorrect={false}
           value={code}
           onChangeText={setCode}
-          placeholder="Recovery code"
+          placeholder={copy.codePlaceholder}
           style={styles.input}
           editable={!busy}
           maxLength={80}
           accessibilityLabel="Recovery code"
         />
-        <TouchableOpacity style={[styles.button, busy && styles.disabled]} onPress={restore} disabled={busy}>
-          {busy && <ActivityIndicator size="small" color="#fff" />}
-          <Text style={styles.buttonText}>{busy ? 'Restoring your data' : 'Restore my data'}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.secondary} onPress={onStartFresh} disabled={busy}>
-          <Text style={styles.secondaryText}>Start with a new account</Text>
-        </TouchableOpacity>
-        <Text style={styles.footnote}>Keep your code private. Anyone with it can access your backup. If you lose it, the backup cannot be recovered.</Text>
-      </View>
+        <Button label={busy ? copy.restoring : copy.restore} onPress={restore} loading={busy} />
+        <Button label={copy.startFresh} variant="secondary" onPress={onStartFresh} disabled={busy} />
+        <Text style={[styles.footnote, { color: colors.muted }]}>{copy.privacyNote}</Text>
+      </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({ screen: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: '#f8fafc' }, content: { gap: 14 }, title: { fontSize: 28, fontWeight: '800', color: '#111827' }, description: { fontSize: 15, lineHeight: 22, color: '#4b5563', marginBottom: 8 }, input: { borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 12, padding: 14, fontSize: 16, backgroundColor: '#fff' }, button: { alignItems: 'center', padding: 16, borderRadius: 12, backgroundColor: '#4f46e5' }, disabled: { opacity: 0.6 }, buttonText: { color: '#fff', fontWeight: '700', fontSize: 16 }, secondary: { alignItems: 'center', padding: 14 }, secondaryText: { color: '#4f46e5', fontWeight: '700' }, footnote: { color: '#64748b', fontSize: 12, lineHeight: 18, marginTop: 8 } });
+const styles = StyleSheet.create({ flex: { flex: 1 }, screen: { flex: 1, justifyContent: 'center', padding: 24 }, content: { flexGrow: 1, justifyContent: 'center', gap: 14 }, title: { fontSize: 28, fontWeight: '800' }, description: { fontSize: 15, lineHeight: 22, marginBottom: 8 }, input: { marginBottom: 0 }, footnote: { fontSize: 12, lineHeight: 18, marginTop: 8 } });

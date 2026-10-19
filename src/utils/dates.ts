@@ -1,9 +1,24 @@
-export function toDateKey(d: Date): string {
+export function toLocalISODate(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
 }
+
+export function toLocalISOMonth(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+export function formatShortDateKey(value: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return value;
+  const [, year, month, day] = match;
+  const date = new Date(Number(year), Number(month) - 1, Number(day));
+  if (toLocalISODate(date) !== value) return value;
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
+export const toDateKey = toLocalISODate;
 
 export const todayKey = () => toDateKey(new Date());
 

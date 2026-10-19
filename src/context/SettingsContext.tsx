@@ -4,6 +4,7 @@ import { Settings, DEFAULT_SETTINGS } from '../types';
 import { loadSettings, saveSettings } from '../utils/storage';
 import { setReminderSoundFlag, setRemindersFlag } from '../utils/notifications';
 import { palette, AppPalette } from '../theme';
+import { syncRecoveryData } from '../utils/recovery';
 
 type Ctx = {
   settings: Settings;
@@ -29,6 +30,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setLoaded(true);
     });
   }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+    const timeout = setTimeout(() => {
+      void syncRecoveryData().catch((error) => console.warn('Settings backup sync failed:', error));
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [loaded, settings]);
 
   const update = (patch: Partial<Settings>) => {
     if (patch.notificationsEnabled !== undefined) setRemindersFlag(patch.notificationsEnabled);

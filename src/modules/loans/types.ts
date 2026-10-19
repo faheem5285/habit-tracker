@@ -1,3 +1,5 @@
+import { addDays, toLocalISODate } from '../../utils/dates';
+
 export type LoanPayment = { id: string; amount: number; date: string; note: string };
 export type LoanPerson = { id: string; name: string; phone: string; photoUrl: string; notes: string; createdAt: string };
 export type Loan = {
@@ -9,6 +11,12 @@ export type LoanLedgerData = { version: 1; people: LoanPerson[]; loans: Loan[]; 
 export const EMPTY_LEDGER: LoanLedgerData = { version: 1, people: [], loans: [], purchaseReminders: [] };
 export const paymentTotal = (loan: Loan) => loan.payments.reduce((sum, payment) => sum + payment.amount, 0);
 export const remainingAmount = (loan: Loan) => Math.max(0, loan.amount - paymentTotal(loan));
+export function isDueWithinNextSevenDays(loan: Loan, today = new Date()) {
+  if (remainingAmount(loan) <= 0) return false;
+  const start = toLocalISODate(today);
+  const end = toLocalISODate(addDays(today, 6));
+  return loan.dueDate >= start && loan.dueDate <= end;
+}
 export function loanStatus(loan: Loan): 'open' | 'partial' | 'paid' | 'overdue' {
   const remaining = remainingAmount(loan);
   if (remaining <= 0) return 'paid';
