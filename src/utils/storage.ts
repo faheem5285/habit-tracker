@@ -4,6 +4,7 @@ import { Habit, Log, Settings, DEFAULT_SETTINGS } from '../types';
 const KEYS = { habits: 'habits', logs: 'logs', settings: 'settings', notes: 'dailyNotes' };
 export const RECOVERY_CODE_KEY = 'recoveryCode';
 export const RECOVERY_BACKUP_READY_KEY = 'recoveryBackupReady';
+export const RECOVERY_RESTORED_KEY = 'recoveryRestored';
 export const RECOVERY_STARTED_KEY = 'recoveryStarted';
 export const RECOVERY_PROMPT_SEEN_KEY = 'momentum.recovery-prompt-seen.v1';
 

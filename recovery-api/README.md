@@ -9,7 +9,7 @@ This Node.js API signs Cloudinary uploads. Full backups are encrypted on the dev
 3. Set the project environment variables `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` using your Cloudinary account values. Keep the API secret server-side.
 4. Deploy. Vercel uses the Node.js function files in `api/`; no separate build command is required.
 5. Test `https://<your-project>.vercel.app/api/health`. The response should include `"ok": true` and `"configured": true`.
-6. In the Expo project's root `.env`, set `EXPO_PUBLIC_BACKUP_API_URL=https://<your-project>.vercel.app/api` and `EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME` to the same Cloudinary cloud name. Restart Expo and rebuild the app so it uses the deployed URL.
+6. For local Expo development, set `EXPO_PUBLIC_BACKUP_API_URL=https://<your-project>.vercel.app/api` and `EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME` to the same Cloudinary cloud name in the Expo project's root `.env`. For APKs built with EAS, set both public values in every applicable build profile's `env` in `eas.json` (or configure them in the EAS environment selected by the profile). Rebuild the app after changing them; environment values are embedded in the bundle.
 7. If the app is used on web, set `CORS_ALLOWED_ORIGINS` to the exact web app origins, separated by commas. The API accepts all origins by default because requests do not use cookies; restricting origins is recommended for a public web deployment.
 
 Vercel routes API functions under `/api`, so the `/api` suffix in `EXPO_PUBLIC_BACKUP_API_URL` is required. For local development, keep the root URL such as `http://localhost:3000` and run `npm start` from this folder; the local Node server serves `/health` and `/recovery/*` without the `/api` prefix.

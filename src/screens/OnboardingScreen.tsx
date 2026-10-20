@@ -28,9 +28,11 @@ const SLIDES = appCopy.onboarding;
 
 export default function OnboardingScreen({
   recoveryPromptOnly = false,
+  skipRecoverySlide = false,
   onRecoveryPromptDone,
 }: {
   recoveryPromptOnly?: boolean;
+  skipRecoverySlide?: boolean;
   onRecoveryPromptDone?: () => Promise<void>;
 }) {
   const { addHabits, habits, logs, dailyNotes } = useHabits();
@@ -43,7 +45,8 @@ export default function OnboardingScreen({
   const [recoveryReady, setRecoveryReady] = useState(false);
   const slideProgress = useRef(new Animated.Value(1)).current;
   const slideDirection = useRef(1);
-  const lastStep = recoveryPromptOnly ? 0 : SLIDES.length;
+  const slideOffset = skipRecoverySlide && !recoveryPromptOnly ? 1 : 0;
+  const lastStep = recoveryPromptOnly ? 0 : SLIDES.length - slideOffset;
   const moveStep = useCallback((change: number) => {
     setStep((current) => {
       const next = Math.max(0, Math.min(lastStep, current + change));
@@ -134,7 +137,8 @@ export default function OnboardingScreen({
       Alert.alert('Could not enable notifications', error instanceof Error ? error.message : 'Please try again.');
     }
   };
-  const slide = SLIDES[step];
+  const slideIndex = step + slideOffset;
+  const slide = SLIDES[slideIndex];
   const slideTranslateX = slideProgress.interpolate({
     inputRange: [0, 1],
     outputRange: [slideDirection.current * 36, 0],
@@ -156,15 +160,15 @@ export default function OnboardingScreen({
             { opacity: slideProgress, transform: [{ translateX: slideTranslateX }] },
           ]}
         >
-        {step < SLIDES.length ? (
+        {step < lastStep || recoveryPromptOnly ? (
           <ScrollView style={[styles.center, { backgroundColor: colors.surface, borderColor: colors.border }]} contentContainerStyle={styles.centerContent} showsVerticalScrollIndicator={false}>
             <View style={[styles.illustration, { backgroundColor: colors.primarySoft }]}>
-              <Ionicons name={(["cloud-upload-outline", "sparkles-outline", "checkmark-circle-outline", "notifications-outline"] as const)[step]} size={48} color={colors.primary} />
+              <Ionicons name={(["cloud-upload-outline", "sparkles-outline", "checkmark-circle-outline", "notifications-outline"] as const)[slideIndex]} size={48} color={colors.primary} />
             </View>
             <Text style={[styles.kicker, { color: colors.primary }]}>SMALL STEPS. REAL MOMENTUM.</Text>
             <Text style={styles.title}>{slide.title}</Text>
             <Text style={[styles.body, { color: colors.muted }]}>{slide.body}</Text>
-            {step === 0 && (
+            {slideIndex === 0 && (
               <View style={styles.recoveryActions}>
                 {recoveryReady ? (
                   <>
@@ -193,7 +197,7 @@ export default function OnboardingScreen({
                 )}
               </View>
             )}
-            {step === 3 && (
+            {slideIndex === 3 && (
               <>
                 <TouchableOpacity
                   style={[styles.secondary, { borderColor: colors.primary }]}

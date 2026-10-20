@@ -11,6 +11,7 @@ import { DEFAULT_SETTINGS, type Habit, type Log, type Settings } from '../types'
 import {
   RECOVERY_BACKUP_READY_KEY,
   RECOVERY_CODE_KEY,
+  RECOVERY_RESTORED_KEY,
   readAllAppData,
   restoreAllAppData,
   type DailyNotes,
@@ -553,6 +554,7 @@ async function restoreEncryptedBackup(envelopeValue: unknown, code: string) {
     await AsyncStorage.setItem(`${FILE_ASSET_CACHE_PREFIX}${code}`, JSON.stringify(restoredAssets));
     await AsyncStorage.setItem(RECOVERY_CODE_KEY, code);
     await AsyncStorage.setItem(RECOVERY_BACKUP_READY_KEY, 'true');
+    await AsyncStorage.setItem(RECOVERY_RESTORED_KEY, 'true');
   } finally {
     key.fill(0);
   }
@@ -625,4 +627,5 @@ export async function restoreWithRecoveryCode(code: string) {
   if (!restoredAny) throw new Error(firstFailure);
   await AsyncStorage.setItem(RECOVERY_CODE_KEY, normalizedCode);
   await AsyncStorage.setItem(RECOVERY_BACKUP_READY_KEY, 'true');
+  await AsyncStorage.setItem(RECOVERY_RESTORED_KEY, 'true');
 }

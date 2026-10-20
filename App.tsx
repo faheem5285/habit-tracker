@@ -11,6 +11,7 @@ import {
   hasLocalAppData,
   RECOVERY_BACKUP_READY_KEY,
   RECOVERY_PROMPT_SEEN_KEY,
+  RECOVERY_RESTORED_KEY,
   RECOVERY_STARTED_KEY,
 } from './src/utils/storage';
 import { syncRecoveryData } from './src/utils/recovery';
@@ -23,6 +24,7 @@ function Gate() {
   const { habits, logs, dailyNotes, loaded: habitsLoaded } = useHabits();
   const [recoveryPromptChecked, setRecoveryPromptChecked] = useState(false);
   const [needsRecoveryPrompt, setNeedsRecoveryPrompt] = useState(false);
+  const [recoveredBackup, setRecoveredBackup] = useState(false);
 
   useEffect(() => {
     if (!loaded) return;
@@ -35,9 +37,11 @@ function Gate() {
     void Promise.all([
       AsyncStorage.getItem(RECOVERY_BACKUP_READY_KEY),
       AsyncStorage.getItem(RECOVERY_PROMPT_SEEN_KEY),
-    ]).then(([backupReady, promptSeen]) => {
+      AsyncStorage.getItem(RECOVERY_RESTORED_KEY),
+    ]).then(([backupReady, promptSeen, restored]) => {
       if (!active) return;
       setNeedsRecoveryPrompt(backupReady !== 'true' && promptSeen !== 'true');
+      setRecoveredBackup(restored === 'true');
       setRecoveryPromptChecked(true);
     }).catch((error) => {
       console.warn('Could not read recovery prompt status:', error);
@@ -70,7 +74,7 @@ function Gate() {
         ? needsRecoveryPrompt
           ? <OnboardingScreen recoveryPromptOnly onRecoveryPromptDone={dismissRecoveryPrompt} />
           : <RootNavigator />
-        : <OnboardingScreen />}
+        : <OnboardingScreen skipRecoverySlide={recoveredBackup} />}
       <StatusBar style={isDark ? 'light' : 'dark'} />
     </>
   );
