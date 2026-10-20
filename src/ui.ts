@@ -43,4 +43,3 @@ export const SHADOWS = {
     elevation: 3,
   },
 } as const;
-//utilitie
