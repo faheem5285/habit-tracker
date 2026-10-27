@@ -149,67 +149,27 @@ export default function TodayScreen() {
       >
         {/* Subtle decorative rings behind the card content */}
         <View pointerEvents="none" style={styles.momentumDecorativeRings}>
-          {/* Layered ring clusters spread across the whole card */}
+          {/* Two subtle outlines per cluster, distributed across the card background */}
           <View style={styles.momentumRingLeftOuter} />
           <View style={[styles.momentumRingLeftOuter, styles.momentumRingDoubleLine]} />
-          <View style={[styles.momentumRingLeftOuter, { transform: [{ scale: 0.96 }], borderColor: 'rgba(166, 216, 184, 0.16)' }]} />
-          <View style={[styles.momentumRingLeftOuter, { transform: [{ scale: 0.8 }], borderColor: 'rgba(166, 216, 184, 0.14)' }]} />
-          <View style={[styles.momentumRingLeftOuter, { transform: [{ scale: 0.68 }], borderColor: 'rgba(166, 216, 184, 0.12)' }]} />
-          <View style={[styles.momentumRingLeftOuter, { transform: [{ scale: 0.56 }], borderColor: 'rgba(166, 216, 184, 0.1)' }]} />
           <View style={styles.momentumRingLeftMiddle} />
           <View style={[styles.momentumRingLeftMiddle, styles.momentumRingDoubleLine]} />
-          <View style={[styles.momentumRingLeftMiddle, { transform: [{ scale: 0.96 }], borderColor: 'rgba(166, 216, 184, 0.16)' }]} />
-          <View style={[styles.momentumRingLeftMiddle, { transform: [{ scale: 0.8 }], borderColor: 'rgba(166, 216, 184, 0.14)' }]} />
-          <View style={[styles.momentumRingLeftMiddle, { transform: [{ scale: 0.68 }], borderColor: 'rgba(166, 216, 184, 0.12)' }]} />
-          <View style={[styles.momentumRingLeftMiddle, { transform: [{ scale: 0.56 }], borderColor: 'rgba(166, 216, 184, 0.1)' }]} />
           <View style={styles.momentumRingLeftInner} />
           <View style={[styles.momentumRingLeftInner, styles.momentumRingDoubleLine]} />
-          <View style={[styles.momentumRingLeftInner, { transform: [{ scale: 0.96 }], borderColor: 'rgba(166, 216, 184, 0.16)' }]} />
-          <View style={[styles.momentumRingLeftInner, { transform: [{ scale: 0.8 }], borderColor: 'rgba(166, 216, 184, 0.14)' }]} />
-          <View style={[styles.momentumRingLeftInner, { transform: [{ scale: 0.68 }], borderColor: 'rgba(166, 216, 184, 0.12)' }]} />
-          <View style={[styles.momentumRingLeftInner, { transform: [{ scale: 0.56 }], borderColor: 'rgba(166, 216, 184, 0.1)' }]} />
           <View style={styles.momentumRingTopOuter} />
           <View style={[styles.momentumRingTopOuter, styles.momentumRingDoubleLine]} />
-          <View style={[styles.momentumRingTopOuter, { transform: [{ scale: 0.96 }], borderColor: 'rgba(166, 216, 184, 0.16)' }]} />
-          <View style={[styles.momentumRingTopOuter, { transform: [{ scale: 0.8 }], borderColor: 'rgba(166, 216, 184, 0.14)' }]} />
-          <View style={[styles.momentumRingTopOuter, { transform: [{ scale: 0.68 }], borderColor: 'rgba(166, 216, 184, 0.12)' }]} />
-          <View style={[styles.momentumRingTopOuter, { transform: [{ scale: 0.56 }], borderColor: 'rgba(166, 216, 184, 0.1)' }]} />
           <View style={styles.momentumRingTopInner} />
           <View style={[styles.momentumRingTopInner, styles.momentumRingDoubleLine]} />
-          <View style={[styles.momentumRingTopInner, { transform: [{ scale: 0.96 }], borderColor: 'rgba(166, 216, 184, 0.16)' }]} />
-          <View style={[styles.momentumRingTopInner, { transform: [{ scale: 0.8 }], borderColor: 'rgba(166, 216, 184, 0.14)' }]} />
-          <View style={[styles.momentumRingTopInner, { transform: [{ scale: 0.68 }], borderColor: 'rgba(166, 216, 184, 0.12)' }]} />
-          <View style={[styles.momentumRingTopInner, { transform: [{ scale: 0.56 }], borderColor: 'rgba(166, 216, 184, 0.1)' }]} />
           <View style={styles.momentumRingLarge} />
           <View style={[styles.momentumRingLarge, styles.momentumRingDoubleLine]} />
-          <View style={[styles.momentumRingLarge, { transform: [{ scale: 0.96 }], borderColor: 'rgba(166, 216, 184, 0.16)' }]} />
-          <View style={[styles.momentumRingLarge, { transform: [{ scale: 0.8 }], borderColor: 'rgba(166, 216, 184, 0.14)' }]} />
-          <View style={[styles.momentumRingLarge, { transform: [{ scale: 0.68 }], borderColor: 'rgba(166, 216, 184, 0.12)' }]} />
-          <View style={[styles.momentumRingLarge, { transform: [{ scale: 0.56 }], borderColor: 'rgba(166, 216, 184, 0.1)' }]} />
           <View style={styles.momentumRingMedium} />
           <View style={[styles.momentumRingMedium, styles.momentumRingDoubleLine]} />
-          <View style={[styles.momentumRingMedium, { transform: [{ scale: 0.96 }], borderColor: 'rgba(166, 216, 184, 0.16)' }]} />
-          <View style={[styles.momentumRingMedium, { transform: [{ scale: 0.8 }], borderColor: 'rgba(166, 216, 184, 0.14)' }]} />
-          <View style={[styles.momentumRingMedium, { transform: [{ scale: 0.68 }], borderColor: 'rgba(166, 216, 184, 0.12)' }]} />
-          <View style={[styles.momentumRingMedium, { transform: [{ scale: 0.56 }], borderColor: 'rgba(166, 216, 184, 0.1)' }]} />
           <View style={styles.momentumRingSmall} />
           <View style={[styles.momentumRingSmall, styles.momentumRingDoubleLine]} />
-          <View style={[styles.momentumRingSmall, { transform: [{ scale: 0.96 }], borderColor: 'rgba(166, 216, 184, 0.16)' }]} />
-          <View style={[styles.momentumRingSmall, { transform: [{ scale: 0.8 }], borderColor: 'rgba(166, 216, 184, 0.14)' }]} />
-          <View style={[styles.momentumRingSmall, { transform: [{ scale: 0.68 }], borderColor: 'rgba(166, 216, 184, 0.12)' }]} />
-          <View style={[styles.momentumRingSmall, { transform: [{ scale: 0.56 }], borderColor: 'rgba(166, 216, 184, 0.1)' }]} />
           <View style={styles.momentumRingFarOuter} />
           <View style={[styles.momentumRingFarOuter, styles.momentumRingDoubleLine]} />
-          <View style={[styles.momentumRingFarOuter, { transform: [{ scale: 0.96 }], borderColor: 'rgba(166, 216, 184, 0.16)' }]} />
-          <View style={[styles.momentumRingFarOuter, { transform: [{ scale: 0.8 }], borderColor: 'rgba(166, 216, 184, 0.14)' }]} />
-          <View style={[styles.momentumRingFarOuter, { transform: [{ scale: 0.68 }], borderColor: 'rgba(166, 216, 184, 0.12)' }]} />
-          <View style={[styles.momentumRingFarOuter, { transform: [{ scale: 0.56 }], borderColor: 'rgba(166, 216, 184, 0.1)' }]} />
           <View style={styles.momentumRingFarInner} />
           <View style={[styles.momentumRingFarInner, styles.momentumRingDoubleLine]} />
-          <View style={[styles.momentumRingFarInner, { transform: [{ scale: 0.96 }], borderColor: 'rgba(166, 216, 184, 0.16)' }]} />
-          <View style={[styles.momentumRingFarInner, { transform: [{ scale: 0.8 }], borderColor: 'rgba(166, 216, 184, 0.14)' }]} />
-          <View style={[styles.momentumRingFarInner, { transform: [{ scale: 0.68 }], borderColor: 'rgba(166, 216, 184, 0.12)' }]} />
-          <View style={[styles.momentumRingFarInner, { transform: [{ scale: 0.56 }], borderColor: 'rgba(166, 216, 184, 0.1)' }]} />
         </View>
         <View style={styles.momentumTextWrap}>
           <View style={styles.momentumBadge}>
@@ -530,27 +490,27 @@ const styles = StyleSheet.create({
   momentumRingLeftOuter: {
     position: 'absolute', width: 230, height: 230, borderRadius: 115,
     borderWidth: 1, borderColor: 'rgba(112, 213, 164, 0.13)',
-    left: -125, top: -132,
+    left: -118, top: -112,
   },
   momentumRingLeftMiddle: {
     position: 'absolute', width: 184, height: 184, borderRadius: 92,
     borderWidth: 1, borderColor: 'rgba(112, 213, 164, 0.16)',
-    left: -102, top: -109,
+    left: '7%', top: '35%',
   },
   momentumRingLeftInner: {
     position: 'absolute', width: 138, height: 138, borderRadius: 69,
     borderWidth: 1, borderColor: 'rgba(112, 213, 164, 0.18)',
-    left: -79, top: -86,
+    left: '25%', top: -108,
   },
   momentumRingTopOuter: {
     position: 'absolute', width: 190, height: 190, borderRadius: 95,
     borderWidth: 1, borderColor: 'rgba(52, 166, 119, 0.12)',
-    left: '29%', top: -118,
+    left: '45%', top: '30%',
   },
   momentumRingTopInner: {
     position: 'absolute', width: 142, height: 142, borderRadius: 71,
     borderWidth: 1, borderColor: 'rgba(112, 213, 164, 0.12)',
-    left: '36%', top: -96,
+    left: '65%', top: -104,
   },
   momentumRingLarge: {
     position: 'absolute',
@@ -559,8 +519,8 @@ const styles = StyleSheet.create({
     borderRadius: 125,
     borderWidth: 1,
     borderColor: 'rgba(52, 166, 119, 0.22)',
-    right: -88,
-    top: 48,
+    right: -92,
+    top: 28,
   },
   momentumRingMedium: {
     position: 'absolute',
@@ -569,8 +529,8 @@ const styles = StyleSheet.create({
     borderRadius: 98,
     borderWidth: 1,
     borderColor: 'rgba(52, 166, 119, 0.18)',
-    right: -61,
-    top: 76,
+    right: '18%',
+    top: '38%',
   },
   momentumRingSmall: {
     position: 'absolute',
@@ -579,18 +539,18 @@ const styles = StyleSheet.create({
     borderRadius: 73,
     borderWidth: 1,
     borderColor: 'rgba(112, 213, 164, 0.15)',
-    right: -34,
-    top: 104,
+    right: -28,
+    top: -18,
   },
   momentumRingFarOuter: {
     position: 'absolute', width: 290, height: 290, borderRadius: 145,
     borderWidth: 1, borderColor: 'rgba(112, 213, 164, 0.10)',
-    right: -154, top: -126,
+    right: -116, top: -112,
   },
   momentumRingFarInner: {
     position: 'absolute', width: 242, height: 242, borderRadius: 121,
     borderWidth: 1, borderColor: 'rgba(112, 213, 164, 0.12)',
-    right: -132, top: -103,
+    right: '36%', top: -126,
   },
   momentumTextWrap: {
     flex: 1,
