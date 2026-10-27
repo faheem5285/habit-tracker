@@ -120,18 +120,18 @@ export default function SettingsScreen() {
   const saveCustomRecovery = async (value: string) => {
     setRecoveryBusy(true);
     try {
+      // Saving the code is a local operation. Uploading every file can take
+      // minutes, so only do that when the user explicitly enables the backup.
       const code = await createRecoveryCode(value);
       setRecoveryCode(code);
       setRecoveryBackupReady(false);
-      await syncRecoveryData(code, { habits, logs, dailyNotes, settings });
-      setRecoveryBackupReady(true);
       setCustomRecoveryCode('');
       Alert.alert(
-        'Custom recovery backup created',
-        'Your backup is ready. Keep this code private; anyone who has it can read your backup.'
+        'Custom recovery code saved',
+        'Your code is saved on this device. To create an encrypted cloud backup, tap Set Up Recovery Code above. Keep this code private.'
       );
     } catch (error) {
-      Alert.alert('Could not set up recovery', error instanceof Error ? error.message : 'Please try again.');
+      Alert.alert('Could not save recovery code', error instanceof Error ? error.message : 'Please try again.');
     } finally { setRecoveryBusy(false); }
   };
 
@@ -553,7 +553,7 @@ export default function SettingsScreen() {
             accessibilityLabel="Custom recovery code"
           />
           <Button
-            label="Create backup with this code"
+            label="Save custom recovery code"
             onPress={confirmCustomRecovery}
             loading={recoveryBusy}
             disabled={!customRecoveryCode.trim()}
