@@ -13,6 +13,7 @@ import { AppPalette } from '../theme';
 import { sendTestNotification, getNotificationPermissionStatus, ensurePermission } from '../utils/notifications';
 import { copySecretTemporarily } from '../modules/passwords/clipboard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as LocalAuthentication from 'expo-local-authentication';
 import { RECOVERY_BACKUP_READY_KEY, RECOVERY_CODE_KEY } from '../utils/storage';
 import { createRecoveryCode, syncRecoveryData } from '../utils/recovery';
 import ScreenHeader from '../components/ScreenHeader';
@@ -318,6 +319,35 @@ export default function SettingsScreen() {
     }
   };
 
+  const toggleAppLock = async (enabled: boolean) => {
+    if (!enabled) {
+      update({ appLockEnabled: false });
+      return;
+    }
+    try {
+      const hardware = await LocalAuthentication.hasHardwareAsync();
+      const enrolled = await LocalAuthentication.isEnrolledAsync();
+      if (!hardware || !enrolled) {
+        Alert.alert(
+          'Screen lock not ready',
+          'Set up a fingerprint, face recognition, or device passcode in your phone settings, then try again.'
+        );
+        return;
+      }
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Confirm to enable Momentum App Lock',
+        disableDeviceFallback: false,
+        fallbackLabel: 'Use device passcode',
+      });
+      if (result.success) {
+        update({ appLockEnabled: true });
+        Alert.alert('App Lock enabled', 'Momentum will ask for your device authentication when you open the app or return from the background.');
+      }
+    } catch (error) {
+      Alert.alert('Could not enable App Lock', error instanceof Error ? error.message : 'Please try again.');
+    }
+  };
+
   const scheduledReminderCount = habits.reduce(
     (total, habit) => total + habit.notificationIds.length,
     0
@@ -465,6 +495,33 @@ export default function SettingsScreen() {
             value={settings.theme}
             onChange={(value) => update({ theme: value })}
           />
+        </Card>
+
+        {/* App Lock Section */}
+        <Text style={styles.sectionTitle}>Security & App Lock</Text>
+        <Card style={styles.card}>
+          <View style={styles.settingRow}>
+            <View style={[styles.leadingIcon, { backgroundColor: colors.primarySoft }]}>
+              <Ionicons name="finger-print" size={22} color={colors.primary} />
+            </View>
+            <View style={styles.settingCopy}>
+              <Text style={styles.settingTitle}>App Lock</Text>
+              <Text style={[styles.settingSubtitle, { color: colors.muted }]}>
+                Require your phone’s fingerprint, face recognition, or device passcode when opening Momentum or returning to it.
+              </Text>
+            </View>
+            <Switch
+              value={Boolean(settings.appLockEnabled)}
+              onValueChange={(enabled) => { void toggleAppLock(enabled); }}
+              trackColor={{ false: colors.surfaceMuted, true: colors.primary }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+          <Text style={[styles.settingSubtitle, { color: colors.muted, marginTop: 10 }]}>
+            {settings.appLockEnabled
+              ? 'App lock is enabled on this device.'
+              : 'Uses your phone’s built-in screen-lock authentication. Set up a fingerprint, face, or device passcode in phone settings first.'}
+          </Text>
         </Card>
 
         {/* Calendar Section */}
