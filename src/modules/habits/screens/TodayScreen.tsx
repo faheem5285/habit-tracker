@@ -142,11 +142,17 @@ export default function TodayScreen() {
         style={[
           styles.momentumCard,
           {
-            backgroundColor: colors.navy,
-            borderColor: colors.navy,
+            backgroundColor: '#17382C',
+            borderColor: '#17382C',
           },
         ]}
       >
+        {/* Subtle decorative rings behind the card content */}
+        <View pointerEvents="none" style={styles.momentumDecorativeRings}>
+          <View style={styles.momentumRingLarge} />
+          <View style={styles.momentumRingMedium} />
+          <View style={styles.momentumRingSmall} />
+        </View>
         <View style={styles.momentumTextWrap}>
           <View style={styles.momentumBadge}>
             <Text style={[styles.momentumBadgeText, { color: '#C8E2D1' }]}>
@@ -438,6 +444,8 @@ const styles = StyleSheet.create({
   screenHeader: { marginHorizontal: -SCREEN_PADDING },
   momentumTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   momentumCard: {
+    position: 'relative',
+    overflow: 'hidden',
     borderRadius: 24,
     borderWidth: 0,
     padding: 20,
@@ -453,9 +461,44 @@ const styles = StyleSheet.create({
   dailyBoostText: { fontSize: 12, lineHeight: 17, marginTop: 3 },
   streakMilestone: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 14, marginBottom: 12 },
   streakMilestoneText: { flex: 1, fontSize: 12, fontWeight: '700', lineHeight: 17 },
+  momentumDecorativeRings: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  momentumRingLarge: {
+    position: 'absolute',
+    width: 250,
+    height: 250,
+    borderRadius: 125,
+    borderWidth: 1,
+    borderColor: 'rgba(52, 166, 119, 0.22)',
+    right: -74,
+    top: 84,
+  },
+  momentumRingMedium: {
+    position: 'absolute',
+    width: 196,
+    height: 196,
+    borderRadius: 98,
+    borderWidth: 1,
+    borderColor: 'rgba(52, 166, 119, 0.18)',
+    right: -48,
+    top: 111,
+  },
+  momentumRingSmall: {
+    position: 'absolute',
+    width: 146,
+    height: 146,
+    borderRadius: 73,
+    borderWidth: 1,
+    borderColor: 'rgba(112, 213, 164, 0.15)',
+    right: -23,
+    top: 136,
+  },
   momentumTextWrap: {
     flex: 1,
     paddingRight: 14,
+    zIndex: 1,
   },
   momentumBadge: {
     alignSelf: 'flex-start',
