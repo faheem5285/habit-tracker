@@ -259,12 +259,16 @@ export async function createRecoveryCode(customCode?: string) {
     }
   }
   const previousCode = await AsyncStorage.getItem(RECOVERY_CODE_KEY);
-  if (previousCode) {
-    await AsyncStorage.removeItem(`${BACKUP_SALT_PREFIX}${previousCode}`);
-    await AsyncStorage.removeItem(`${FILE_ASSET_CACHE_PREFIX}${previousCode}`);
+  // Keep the salt and encrypted-file index when the user re-saves the same
+  // code. Clearing either forces every managed file to be encrypted/uploaded again.
+  if (previousCode !== code) {
+    if (previousCode) {
+      await AsyncStorage.removeItem(`${BACKUP_SALT_PREFIX}${previousCode}`);
+      await AsyncStorage.removeItem(`${FILE_ASSET_CACHE_PREFIX}${previousCode}`);
+    }
+    await AsyncStorage.removeItem(`${BACKUP_SALT_PREFIX}${code}`);
+    await AsyncStorage.removeItem(`${FILE_ASSET_CACHE_PREFIX}${code}`);
   }
-  await AsyncStorage.removeItem(`${BACKUP_SALT_PREFIX}${code}`);
-  await AsyncStorage.removeItem(`${FILE_ASSET_CACHE_PREFIX}${code}`);
   await AsyncStorage.removeItem(RECOVERY_BACKUP_READY_KEY);
   await AsyncStorage.setItem(RECOVERY_CODE_KEY, code);
   return code;
