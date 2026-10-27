@@ -7,6 +7,7 @@ import {
   utf8ToBytes,
 } from '@noble/hashes/utils.js';
 import * as Crypto from 'expo-crypto';
+import { Platform } from 'react-native';
 import {
   PASSWORD_VAULT_FORMAT,
   PASSWORD_VAULT_VERSION,
@@ -196,7 +197,9 @@ export async function createEncryptedVault(passphrase: string, entries: Password
   }
   const salt = Crypto.getRandomBytes(16);
   const saltHex = bytesToHex(salt);
-  const iterations = globalThis.crypto?.subtle
+  // Keep the native app responsive: 600k PBKDF2 rounds can be prohibitively
+  // slow on some phones. Web Crypto can handle the stronger web setting efficiently.
+  const iterations = Platform.OS === 'web' && globalThis.crypto?.subtle
     ? VAULT_KDF_ITERATIONS
     : NATIVE_VAULT_KDF_ITERATIONS;
   const derived = await deriveKey(passphrase, saltHex, iterations, NATIVE_VAULT_KDF_ITERATIONS);
