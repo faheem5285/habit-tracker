@@ -269,7 +269,9 @@ export async function createRecoveryCode(customCode?: string) {
     await AsyncStorage.removeItem(`${BACKUP_SALT_PREFIX}${code}`);
     await AsyncStorage.removeItem(`${FILE_ASSET_CACHE_PREFIX}${code}`);
   }
-  await AsyncStorage.removeItem(RECOVERY_BACKUP_READY_KEY);
+  if (previousCode !== code) {
+    await AsyncStorage.removeItem(RECOVERY_BACKUP_READY_KEY);
+  }
   await AsyncStorage.setItem(RECOVERY_CODE_KEY, code);
   return code;
 }
@@ -386,7 +388,12 @@ async function executeSync(code?: string, snapshot?: AppBackup) {
   await syncFullBackup(recoveryCode, snapshot);
 }
 
-export function syncRecoveryData(code?: string, snapshot?: AppBackup): Promise<void> {
+export async function syncRecoveryData(code?: string, snapshot?: AppBackup): Promise<void> {
+  // Calls without an explicit code are background syncs. Do not upload anything
+  // until the user has completed recovery setup at least once. Explicit calls
+  // from the recovery setup screen still perform the initial backup.
+  if (!code && (await AsyncStorage.getItem(RECOVERY_BACKUP_READY_KEY)) !== 'true') return;
+
   if (!activeSyncPromise) {
     activeSyncPromise = executeSync(code, snapshot).finally(() => {
       activeSyncPromise = null;
