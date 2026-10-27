@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { AppState, AppStateStatus, StyleSheet, TouchableOpacity, View } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { Ionicons } from '@expo/vector-icons';
 import { useSettings } from '../context/SettingsContext';
 import { Text } from '../components/Themed';
 
-export default function AppLockGate({ children }: { children: React.ReactNode }) {
+export default function AppLockGate({ children }: { children: ReactNode }) {
   const { settings, colors } = useSettings();
   const [locked, setLocked] = useState(Boolean(settings.appLockEnabled));
   const [checking, setChecking] = useState(false);
