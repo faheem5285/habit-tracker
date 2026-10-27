@@ -149,9 +149,17 @@ export default function TodayScreen() {
       >
         {/* Subtle decorative rings behind the card content */}
         <View pointerEvents="none" style={styles.momentumDecorativeRings}>
+          {/* Layered ring clusters spread across the whole card */}
+          <View style={styles.momentumRingLeftOuter} />
+          <View style={styles.momentumRingLeftMiddle} />
+          <View style={styles.momentumRingLeftInner} />
+          <View style={styles.momentumRingTopOuter} />
+          <View style={styles.momentumRingTopInner} />
           <View style={styles.momentumRingLarge} />
           <View style={styles.momentumRingMedium} />
           <View style={styles.momentumRingSmall} />
+          <View style={styles.momentumRingFarOuter} />
+          <View style={styles.momentumRingFarInner} />
         </View>
         <View style={styles.momentumTextWrap}>
           <View style={styles.momentumBadge}>
@@ -465,6 +473,31 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     overflow: 'hidden',
   },
+  momentumRingLeftOuter: {
+    position: 'absolute', width: 230, height: 230, borderRadius: 115,
+    borderWidth: 1, borderColor: 'rgba(112, 213, 164, 0.13)',
+    left: -125, top: -132,
+  },
+  momentumRingLeftMiddle: {
+    position: 'absolute', width: 184, height: 184, borderRadius: 92,
+    borderWidth: 1, borderColor: 'rgba(112, 213, 164, 0.16)',
+    left: -102, top: -109,
+  },
+  momentumRingLeftInner: {
+    position: 'absolute', width: 138, height: 138, borderRadius: 69,
+    borderWidth: 1, borderColor: 'rgba(112, 213, 164, 0.18)',
+    left: -79, top: -86,
+  },
+  momentumRingTopOuter: {
+    position: 'absolute', width: 190, height: 190, borderRadius: 95,
+    borderWidth: 1, borderColor: 'rgba(52, 166, 119, 0.12)',
+    left: '35%', top: -146,
+  },
+  momentumRingTopInner: {
+    position: 'absolute', width: 142, height: 142, borderRadius: 71,
+    borderWidth: 1, borderColor: 'rgba(112, 213, 164, 0.12)',
+    left: '41%', top: -122,
+  },
   momentumRingLarge: {
     position: 'absolute',
     width: 250,
@@ -494,6 +527,16 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(112, 213, 164, 0.15)',
     right: -23,
     top: 136,
+  },
+  momentumRingFarOuter: {
+    position: 'absolute', width: 290, height: 290, borderRadius: 145,
+    borderWidth: 1, borderColor: 'rgba(112, 213, 164, 0.10)',
+    right: -176, top: -148,
+  },
+  momentumRingFarInner: {
+    position: 'absolute', width: 242, height: 242, borderRadius: 121,
+    borderWidth: 1, borderColor: 'rgba(112, 213, 164, 0.12)',
+    right: -152, top: -124,
   },
   momentumTextWrap: {
     flex: 1,
