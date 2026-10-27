@@ -168,12 +168,37 @@ export default function TodayScreen() {
           <Text style={[styles.motivationText, { color: '#D7E4DB' }]}>
             {motivation.today(progress, totalCount)}
           </Text>
+
+          {totalCount > 0 && (
+            <View style={styles.habitProgressDots} accessibilityLabel="Individual habit completion">
+              {scheduledHabits.map((habit) => {
+                const completed = isDone(habit, logs, key);
+                return (
+                  <View key={habit.id} style={styles.habitProgressItem}>
+                    <View
+                      style={[
+                        styles.habitProgressCircle,
+                        completed
+                          ? { backgroundColor: '#A6D8B8', borderColor: '#A6D8B8' }
+                          : { backgroundColor: '#405249', borderColor: '#8CA095' },
+                      ]}
+                    >
+                      {completed && <Ionicons name="checkmark" size={11} color="#173C2F" />}
+                    </View>
+                    <Text numberOfLines={1} style={styles.habitProgressLabel}>
+                      {habit.name}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          )}
         </View>
 
         <ProgressRing
           progress={progress}
-          size={74}
-          stroke={7}
+          size={94}
+          stroke={8}
           color="#A6D8B8"
           backgroundColor="#405249"
           textColor="#FFFFFF"
@@ -450,6 +475,33 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     marginTop: 6,
+  },
+  habitProgressDots: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 10,
+  },
+  habitProgressItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    maxWidth: '100%',
+  },
+  habitProgressCircle: {
+    width: 17,
+    height: 17,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  habitProgressLabel: {
+    color: '#E1EBE4',
+    fontSize: 10,
+    fontWeight: '600',
+    maxWidth: 88,
   },
   filterScroll: {
     flexDirection: 'row',
