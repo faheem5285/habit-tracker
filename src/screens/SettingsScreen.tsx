@@ -123,12 +123,15 @@ export default function SettingsScreen() {
       // Saving the code is a local operation. Uploading every file can take
       // minutes, so only do that when the user explicitly enables the backup.
       const code = await createRecoveryCode(value);
+      const backupReady = (await AsyncStorage.getItem(RECOVERY_BACKUP_READY_KEY)) === 'true';
       setRecoveryCode(code);
-      setRecoveryBackupReady(false);
+      setRecoveryBackupReady(backupReady);
       setCustomRecoveryCode('');
       Alert.alert(
-        'Custom recovery code saved',
-        'Your code is saved on this device. To create an encrypted cloud backup, tap Set Up Recovery Code above. Keep this code private.'
+        backupReady ? 'Custom recovery code unchanged' : 'Custom recovery code saved',
+        backupReady
+          ? 'Your existing encrypted backup is still ready. Keep your recovery code private.'
+          : 'Your code is saved on this device. To create an encrypted cloud backup, tap Set Up Recovery Code above. Keep this code private.'
       );
     } catch (error) {
       Alert.alert('Could not save recovery code', error instanceof Error ? error.message : 'Please try again.');
