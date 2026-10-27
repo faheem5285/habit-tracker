@@ -33,6 +33,7 @@ export type Settings = {
   notificationsEnabled: boolean;
   soundEnabled: boolean;
   hasOnboarded: boolean;
+  appLockEnabled: boolean;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -41,6 +42,7 @@ export const DEFAULT_SETTINGS: Settings = {
   notificationsEnabled: false,
   soundEnabled: true,
   hasOnboarded: false,
+  appLockEnabled: false,
 };
 
 export type Challenge = {
