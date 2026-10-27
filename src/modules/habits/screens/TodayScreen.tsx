@@ -151,15 +151,25 @@ export default function TodayScreen() {
         <View pointerEvents="none" style={styles.momentumDecorativeRings}>
           {/* Layered ring clusters spread across the whole card */}
           <View style={styles.momentumRingLeftOuter} />
+          <View style={[styles.momentumRingLeftOuter, styles.momentumRingDoubleLine]} />
           <View style={styles.momentumRingLeftMiddle} />
+          <View style={[styles.momentumRingLeftMiddle, styles.momentumRingDoubleLine]} />
           <View style={styles.momentumRingLeftInner} />
+          <View style={[styles.momentumRingLeftInner, styles.momentumRingDoubleLine]} />
           <View style={styles.momentumRingTopOuter} />
+          <View style={[styles.momentumRingTopOuter, styles.momentumRingDoubleLine]} />
           <View style={styles.momentumRingTopInner} />
+          <View style={[styles.momentumRingTopInner, styles.momentumRingDoubleLine]} />
           <View style={styles.momentumRingLarge} />
+          <View style={[styles.momentumRingLarge, styles.momentumRingDoubleLine]} />
           <View style={styles.momentumRingMedium} />
+          <View style={[styles.momentumRingMedium, styles.momentumRingDoubleLine]} />
           <View style={styles.momentumRingSmall} />
+          <View style={[styles.momentumRingSmall, styles.momentumRingDoubleLine]} />
           <View style={styles.momentumRingFarOuter} />
+          <View style={[styles.momentumRingFarOuter, styles.momentumRingDoubleLine]} />
           <View style={styles.momentumRingFarInner} />
+          <View style={[styles.momentumRingFarInner, styles.momentumRingDoubleLine]} />
         </View>
         <View style={styles.momentumTextWrap}>
           <View style={styles.momentumBadge}>
@@ -472,6 +482,10 @@ const styles = StyleSheet.create({
   momentumDecorativeRings: {
     ...StyleSheet.absoluteFillObject,
     overflow: 'hidden',
+  },
+  momentumRingDoubleLine: {
+    transform: [{ scale: 0.88 }],
+    borderColor: 'rgba(166, 216, 184, 0.18)',
   },
   momentumRingLeftOuter: {
     position: 'absolute', width: 230, height: 230, borderRadius: 115,
