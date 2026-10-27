@@ -18,6 +18,7 @@ import { syncRecoveryData } from './src/utils/recovery';
 import { LoaderScreen } from './src/components/AppLoader';
 import { useColorScheme } from 'react-native';
 import { PasswordVaultProvider } from './src/modules/passwords/PasswordVaultContext';
+import AppLockGate from './src/components/AppLockGate';
 
 function Gate() {
   const { settings, loaded, isDark } = useSettings();
@@ -73,7 +74,7 @@ function Gate() {
       {settings.hasOnboarded
         ? needsRecoveryPrompt
           ? <OnboardingScreen recoveryPromptOnly onRecoveryPromptDone={dismissRecoveryPrompt} />
-          : <RootNavigator />
+          : <AppLockGate><RootNavigator /></AppLockGate>
         : <OnboardingScreen skipRecoverySlide={recoveredBackup} />}
       <StatusBar style={isDark ? 'light' : 'dark'} />
     </>
