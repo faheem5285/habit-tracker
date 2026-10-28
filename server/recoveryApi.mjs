@@ -186,13 +186,17 @@ export async function handleRecoveryRequest(request) {
     const code = getCode(body);
     if (path === '/recovery/upload-signature') {
       const isManifest = body.kind === 'manifest';
-      if (!isManifest && (body.kind !== 'file' || typeof body.fileId !== 'string' || !/^[0-9a-f]{32}$/i.test(body.fileId))) {
-        throw Object.assign(new Error('Invalid backup file identifier.'), { status: 400 });
-      }
+      const isModule = body.kind === 'module';
+      const validModule = ['habit', 'passwords', 'loan', 'expenses', 'files'].includes(body.module);
+      if (isModule && !validModule) throw Object.assign(new Error('Invalid backup module.'), { status: 400 });
+      if (!isManifest && !isModule && (body.kind !== 'file' || typeof body.fileId !== 'string' || !/^[0-9a-f]{32}$/i.test(body.fileId))) throw Object.assign(new Error('Invalid backup file identifier.'), { status: 400 });
+      if (!['manifest', 'module', 'file'].includes(body.kind)) throw Object.assign(new Error('Invalid backup asset type.'), { status: 400 });
       const timestamp = Math.floor(Date.now() / 1000).toString();
       const publicId = isManifest
-        ? `habit-tracker/backups/${code}/full.json`
-        : `habit-tracker/backups/${code}/files/${body.fileId}.json`;
+        ? `habit-tracker/backups/${code}/manifest/index.json`
+        : isModule
+          ? `habit-tracker/backups/${code}/${body.module}/data.json`
+          : `habit-tracker/backups/${code}/files/${body.fileId}.json`;
       const params = { invalidate: 'true', overwrite: 'true', public_id: publicId, timestamp };
       return send(request, 200, {
         apiKey: CLOUDINARY_API_KEY,
@@ -210,7 +214,7 @@ export async function handleRecoveryRequest(request) {
         throw Object.assign(new Error('Backup data is too large.'), { status: 413 });
       }
       const module = typeof body.module === 'string' ? body.module : 'habits';
-      if (!['habits', 'loans', 'expenses', 'full'].includes(module)) {
+      if (!['habits', 'loans', 'expenses', 'full', 'habit', 'passwords', 'loan', 'files'].includes(module)) {
         throw Object.assign(new Error('Invalid backup module.'), { status: 400 });
       }
       await cloudinaryUpload(code, module, body.data);
