@@ -114,99 +114,21 @@ async function backupKey(code: string, salt?: string, iterations?: number) {
   return { key, salt: saltHex };
 }
 
-async function signedAsset(code: string, kind: 'manifest' | 'file', fileId?: string) {
-  const result = await request<{
-    apiKey?: unknown;
-    cloudName?: unknown;
-    publicId?: unknown;
-    timestamp?: unknown;
-    signature?: unknown;
-  }>('/recovery/upload-signature', { code, kind, ...(fileId ? { fileId } : {}) });
-  if (
-    typeof result.apiKey !== 'string' ||
-    typeof result.cloudName !== 'string' ||
-    typeof result.publicId !== 'string' ||
-    typeof result.timestamp !== 'string' ||
-    typeof result.signature !== 'string' ||
-    !/^[0-9a-f]{40}$/i.test(result.signature)
-  ) {
-    throw new Error('The recovery service returned invalid Cloudinary upload credentials.');
-  }
+async function signedAsset(code: string, kind: 'manifest' | 'module' | 'file', module?: BackupModule, fileId?: string) {
+  const result = await request<{ apiKey?: unknown; cloudName?: unknown; publicId?: unknown; timestamp?: unknown; signature?: unknown }>('/recovery/upload-signature', { code, kind, ...(module ? { module } : {}), ...(fileId ? { fileId } : {}) });
+  if (typeof result.apiKey !== 'string' || typeof result.cloudName !== 'string' || typeof result.publicId !== 'string' || typeof result.timestamp !== 'string' || typeof result.signature !== 'string' || !/^[0-9a-f]{40}$/i.test(result.signature)) throw new Error('The recovery service returned invalid Cloudinary upload credentials.');
   return result as { apiKey: string; cloudName: string; publicId: string; timestamp: string; signature: string };
 }
-
-async function uploadEncryptedAsset(code: string, kind: 'manifest' | 'file', bytes: Uint8Array, fileId?: string) {
-  const signed = await signedAsset(code, kind, fileId);
-  const url = `https://api.cloudinary.com/v1_1/${signed.cloudName}/raw/upload`;
-  const parameters = {
-    api_key: signed.apiKey,
-    invalidate: 'true',
-    overwrite: 'true',
-    public_id: signed.publicId,
-    signature: signed.signature,
-    timestamp: signed.timestamp,
-  };
-
-  if (Platform.OS === 'web') {
-    const form = new FormData();
-    const buffer = new ArrayBuffer(bytes.byteLength);
-    new Uint8Array(buffer).set(bytes);
-    form.append('file', new Blob([buffer], { type: 'application/octet-stream' }), kind === 'manifest' ? 'full.json' : 'file.json');
-    Object.entries(parameters).forEach(([key, value]) => form.append(key, value));
-    const response = await fetchWithTimeout(url, { method: 'POST', body: form }, BACKUP_UPLOAD_TIMEOUT_MS);
-    const result = await response.json().catch(() => null);
-    if (!response.ok) {
-      throw new Error(typeof result?.error?.message === 'string' ? result.error.message : 'Cloudinary could not upload an encrypted backup asset.');
-    }
-  } else {
-    if (!FileSystem.cacheDirectory) throw new Error('Temporary storage is unavailable for the encrypted backup upload.');
-    const tempUri = `${FileSystem.cacheDirectory}momentum-backup-${bytesToHex(await Crypto.getRandomBytesAsync(12))}.json`;
-    try {
-      await FileSystem.writeAsStringAsync(tempUri, fromByteArray(bytes), {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      const uploadTask = FileSystem.createUploadTask(url, tempUri, {
-        httpMethod: 'POST',
-        uploadType: FileSystem.FileSystemUploadType.MULTIPART,
-        fieldName: 'file',
-        mimeType: 'application/octet-stream',
-        parameters,
-      });
-      let timeoutHandle: ReturnType<typeof setTimeout>;
-      const timeout = new Promise<never>((_resolve, reject) => {
-        timeoutHandle = setTimeout(() => {
-          void uploadTask.cancelAsync();
-          reject(new Error('The encrypted backup upload timed out. Check your connection and try again.'));
-        }, BACKUP_UPLOAD_TIMEOUT_MS);
-      });
-      let response;
-      try {
-        response = await Promise.race([uploadTask.uploadAsync(), timeout]);
-      } finally {
-        clearTimeout(timeoutHandle!);
-      }
-      if (!response) {
-        throw new Error('The encrypted backup upload was cancelled. Please try again.');
-      }
-      if (response.status < 200 || response.status >= 300) {
-        let message = 'Cloudinary could not upload an encrypted backup asset.';
-        try {
-          const result: unknown = JSON.parse(response.body);
-          if (isRecord(result) && isRecord(result.error) && typeof result.error.message === 'string') {
-            message = result.error.message;
-          }
-        } catch {}
-        throw new Error(message);
-      }
-    } finally {
-      await FileSystem.deleteAsync(tempUri, { idempotent: true }).catch((error) => {
-        console.warn('Could not remove a temporary encrypted backup file:', error);
-      });
-    }
-  }
+type BackupModule = 'habit' | 'passwords' | 'loan' | 'expenses' | 'files';
+type ModuleEnvelope = { format: 'momentum.module-backup'; version: 1; module: BackupModule; salt: string; iterations: number; nonce: string; ciphertext: string };
+type ModularBackupIndex = { format: 'momentum.backup-index'; version: 1; salt: string; iterations: number; modules: BackupModule[] };
+async function uploadEncryptedAsset(code: string, kind: 'manifest' | 'module' | 'file', bytes: Uint8Array, module?: BackupModule, fileId?: string) {
+  const signed = await signedAsset(code, kind, module, fileId); const url = 'https://api.cloudinary.com/v1_1/' + signed.cloudName + '/raw/upload';
+  const parameters = { api_key: signed.apiKey, invalidate: 'true', overwrite: 'true', public_id: signed.publicId, signature: signed.signature, timestamp: signed.timestamp };
+  if (Platform.OS === 'web') { const form = new FormData(); const buffer = new ArrayBuffer(bytes.byteLength); new Uint8Array(buffer).set(bytes); form.append('file', new Blob([buffer], { type: 'application/octet-stream' }), kind === 'manifest' ? 'index.json' : kind === 'module' ? 'data.json' : 'file.json'); Object.entries(parameters).forEach(([key, value]) => form.append(key, value)); const response = await fetchWithTimeout(url, { method: 'POST', body: form }, BACKUP_UPLOAD_TIMEOUT_MS); const result = await response.json().catch(() => null); if (!response.ok) throw new Error(typeof result?.error?.message === 'string' ? result.error.message : 'Cloudinary could not upload an encrypted backup asset.'); }
+  else { if (!FileSystem.cacheDirectory) throw new Error('Temporary storage is unavailable for the encrypted backup upload.'); const tempUri = FileSystem.cacheDirectory + 'momentum-backup-' + bytesToHex(await Crypto.getRandomBytesAsync(12)) + '.json'; try { await FileSystem.writeAsStringAsync(tempUri, fromByteArray(bytes), { encoding: FileSystem.EncodingType.Base64 }); const uploadTask = FileSystem.createUploadTask(url, tempUri, { httpMethod: 'POST', uploadType: FileSystem.FileSystemUploadType.MULTIPART, fieldName: 'file', mimeType: 'application/octet-stream', parameters }); let timeoutHandle: ReturnType<typeof setTimeout>; const timeout = new Promise<never>((_resolve, reject) => { timeoutHandle = setTimeout(() => { void uploadTask.cancelAsync(); reject(new Error('The encrypted backup upload timed out. Check your connection and try again.')); }, BACKUP_UPLOAD_TIMEOUT_MS); }); let response; try { response = await Promise.race([uploadTask.uploadAsync(), timeout]); } finally { clearTimeout(timeoutHandle!); } if (!response) throw new Error('The encrypted backup upload was cancelled. Please try again.'); if (response.status < 200 || response.status >= 300) { let message = 'Cloudinary could not upload an encrypted backup asset.'; try { const result: unknown = JSON.parse(response.body); if (isRecord(result) && isRecord(result.error) && typeof result.error.message === 'string') message = result.error.message; } catch {} throw new Error(message); } } finally { await FileSystem.deleteAsync(tempUri, { idempotent: true }).catch((error) => console.warn('Could not remove a temporary encrypted backup file:', error)); } }
   return signed.publicId;
 }
-
 async function downloadAsset(publicId: string) {
   if (!CLOUD_NAME) throw new Error('Cloudinary cloud name is missing from the app environment.');
   const path = publicId.split('/').map(encodeURIComponent).join('/');
@@ -277,107 +199,20 @@ export async function createRecoveryCode(customCode?: string) {
 }
 
 async function syncFullBackup(code: string, snapshot?: AppBackup) {
-  const [app, loans, expenses, passwordVault, passwordVaultTimeout, files] = await Promise.all([
-    snapshot ? Promise.resolve(snapshot) : readAllAppData(),
-    loadLedger(),
-    loadExpenses(),
-    readVaultEnvelope(),
-    loadVaultTimeout(),
-    loadManagedFiles(),
-  ]);
-  const { key, salt } = await backupKey(code);
-  const cacheKey = `${FILE_ASSET_CACHE_PREFIX}${code}`;
-  const cachedRaw = await AsyncStorage.getItem(cacheKey);
-  let cache: Record<string, CachedFileAsset> = {};
-  if (cachedRaw) {
-    try {
-      const parsed: unknown = JSON.parse(cachedRaw);
-      if (!isRecord(parsed)) throw new Error('invalid file asset cache');
-      cache = parsed as Record<string, CachedFileAsset>;
-    } catch (error) {
-      key.fill(0);
-      throw new Error('The local recovery file index is damaged. Recreate your recovery code before syncing.', { cause: error });
+  const [app, loans, expenses, passwordVault, passwordVaultTimeout, files] = await Promise.all([snapshot ? Promise.resolve(snapshot) : readAllAppData(), loadLedger(), loadExpenses(), readVaultEnvelope(), loadVaultTimeout(), loadManagedFiles()]);
+  const { key, salt } = await backupKey(code); const cacheKey = FILE_ASSET_CACHE_PREFIX + code; const cachedRaw = await AsyncStorage.getItem(cacheKey); let cache: Record<string, CachedFileAsset> = {};
+  if (cachedRaw) { try { const parsed: unknown = JSON.parse(cachedRaw); if (!isRecord(parsed)) throw new Error('invalid file asset cache'); cache = parsed as Record<string, CachedFileAsset>; } catch (error) { key.fill(0); throw new Error('The local recovery file index is damaged. Recreate your recovery code before syncing.', { cause: error }); } }
+  try { const fileBackups: BackupFile[] = []; const nextCache: Record<string, CachedFileAsset> = {};
+    for (const file of files) { const cached = cache[file.id]; let asset: CachedFileAsset;
+      if (cached && cached.updatedAt === file.updatedAt && cached.size === file.size && cached.storedName === file.storedName && typeof cached.publicId === 'string' && cached.publicId.startsWith('habit-tracker/backups/' + code + '/files/') && /^[0-9a-f]{32}\\.json$/i.test(cached.publicId.slice(('habit-tracker/backups/' + code + '/files/').length)) && typeof cached.nonce === 'string' && /^[0-9a-f]{24}$/i.test(cached.nonce)) asset = cached;
+      else { const fileId = bytesToHex(await Crypto.getRandomBytesAsync(16)); const nonce = bytesToHex(await Crypto.getRandomBytesAsync(12)); const bytes = await readManagedFileBytes(file); const encrypted = gcm(key, hexToBytes(nonce), utf8ToBytes('Momentum recovery file ' + file.id)).encrypt(bytes); const publicId = await uploadEncryptedAsset(code, 'file', encrypted, undefined, fileId); asset = { updatedAt: file.updatedAt, size: file.size, storedName: file.storedName, publicId, nonce }; }
+      nextCache[file.id] = asset; fileBackups.push({ file, publicId: asset.publicId, nonce: asset.nonce });
     }
-  }
-
-  try {
-    const fileBackups: BackupFile[] = new Array(files.length);
-    const nextCache: Record<string, CachedFileAsset> = {};
-    let nextFileIndex = 0;
-    let firstFailure: unknown;
-    let hasFailure = false;
-
-    const uploadNextFile = async () => {
-      while (!hasFailure) {
-        const index = nextFileIndex++;
-        const file = files[index];
-        if (!file) return;
-
-        try {
-          const cached = cache[file.id];
-          let asset: CachedFileAsset;
-          if (
-            cached &&
-            cached.updatedAt === file.updatedAt &&
-            cached.size === file.size &&
-            cached.storedName === file.storedName &&
-            typeof cached.publicId === 'string' &&
-            cached.publicId.startsWith(`habit-tracker/backups/${code}/files/`) &&
-            /^[0-9a-f]{32}\.json$/i.test(cached.publicId.slice(`habit-tracker/backups/${code}/files/`.length)) &&
-            typeof cached.nonce === 'string' &&
-            /^[0-9a-f]{24}$/i.test(cached.nonce)
-          ) {
-            asset = cached;
-          } else {
-            const fileId = bytesToHex(await Crypto.getRandomBytesAsync(16));
-            const nonce = bytesToHex(await Crypto.getRandomBytesAsync(12));
-            const bytes = await readManagedFileBytes(file);
-            const encrypted = gcm(key, hexToBytes(nonce), utf8ToBytes(`Momentum recovery file ${file.id}`)).encrypt(bytes);
-            const publicId = await uploadEncryptedAsset(code, 'file', encrypted, fileId);
-            asset = { updatedAt: file.updatedAt, size: file.size, storedName: file.storedName, publicId, nonce };
-          }
-          nextCache[file.id] = asset;
-          fileBackups[index] = { file, publicId: asset.publicId, nonce: asset.nonce };
-        } catch (error) {
-          if (!hasFailure) {
-            firstFailure = error;
-            hasFailure = true;
-          }
-        }
-      }
-    };
-
-    const workerCount = Math.min(3, files.length);
-    await Promise.all(Array.from({ length: workerCount }, () => uploadNextFile()));
-    if (hasFailure) throw firstFailure;
-
-    const data: FullBackupData = {
-      version: 1,
-      app,
-      loans,
-      expenses,
-      passwordVault,
-      passwordVaultTimeout,
-      files: fileBackups,
-    };
-    const nonce = await Crypto.getRandomBytesAsync(12);
-    const ciphertext = gcm(key, nonce, BACKUP_AAD).encrypt(utf8ToBytes(JSON.stringify(data)));
-    const envelope: EncryptedBackup = {
-      format: 'momentum.full-backup',
-      version: 1,
-      salt,
-      iterations: BACKUP_KDF_ITERATIONS,
-      nonce: bytesToHex(nonce),
-      ciphertext: bytesToHex(ciphertext),
-    };
-    await uploadEncryptedAsset(code, 'manifest', utf8ToBytes(JSON.stringify(envelope)));
-    await AsyncStorage.setItem(cacheKey, JSON.stringify(nextCache));
-    await AsyncStorage.setItem(RECOVERY_BACKUP_READY_KEY, 'true');
-  } finally {
-    key.fill(0);
-  }
+    const payloads: Record<BackupModule, unknown> = { habit: app, passwords: { passwordVault, passwordVaultTimeout }, loan: loans, expenses, files: fileBackups }; const modules: BackupModule[] = ['habit', 'passwords', 'loan', 'expenses', 'files'];
+    for (const module of modules) { const nonce = await Crypto.getRandomBytesAsync(12); const ciphertext = gcm(key, nonce, utf8ToBytes('Momentum recovery module ' + module + ' v1')).encrypt(utf8ToBytes(JSON.stringify(payloads[module]))); const envelope: ModuleEnvelope = { format: 'momentum.module-backup', version: 1, module, salt, iterations: BACKUP_KDF_ITERATIONS, nonce: bytesToHex(nonce), ciphertext: bytesToHex(ciphertext) }; await uploadEncryptedAsset(code, 'module', utf8ToBytes(JSON.stringify(envelope)), module); }
+    const index: ModularBackupIndex = { format: 'momentum.backup-index', version: 1, salt, iterations: BACKUP_KDF_ITERATIONS, modules }; await uploadEncryptedAsset(code, 'manifest', utf8ToBytes(JSON.stringify(index))); await AsyncStorage.setItem(cacheKey, JSON.stringify(nextCache)); await AsyncStorage.setItem(RECOVERY_BACKUP_READY_KEY, 'true');
+  } finally { key.fill(0); }
 }
-
 let activeSyncPromise: Promise<void> | null = null;
 let queuedSyncRequest: { code?: string; snapshot?: AppBackup; resolve: () => void; reject: (err: unknown) => void } | null = null;
 
@@ -571,13 +406,33 @@ async function restoreEncryptedBackup(envelopeValue: unknown, code: string) {
   }
 }
 
+async function restoreModularBackup(indexValue: unknown, code: string) {
+  if (!isRecord(indexValue) || indexValue.format !== 'momentum.backup-index' || indexValue.version !== 1 || typeof indexValue.salt !== 'string' || !/^[0-9a-f]{32}$/i.test(indexValue.salt) || !Array.isArray(indexValue.modules) || !indexValue.modules.every((m) => ['habit', 'passwords', 'loan', 'expenses', 'files'].includes(String(m)))) throw new Error('The modular recovery index is invalid.');
+  const index = indexValue as unknown as ModularBackupIndex; const { key } = await backupKey(code, index.salt, index.iterations);
+  try { const decoded: Partial<Record<BackupModule, unknown>> = {};
+    for (const module of index.modules) { const url = 'https://res.cloudinary.com/' + CLOUD_NAME + '/raw/upload/habit-tracker/backups/' + encodeURIComponent(code) + '/' + module + '/data.json?refresh=' + Date.now(); const response = await fetch(url, { headers: { 'Cache-Control': 'no-cache' } }); if (!response.ok) throw new Error('Could not fetch the ' + module + ' backup.'); const value: unknown = await response.json();
+      if (!isRecord(value) || value.format !== 'momentum.module-backup' || value.version !== 1 || value.module !== module || value.salt !== index.salt || typeof value.nonce !== 'string' || !/^[0-9a-f]{24}$/i.test(value.nonce) || typeof value.ciphertext !== 'string' || !/^[0-9a-f]+$/i.test(value.ciphertext)) throw new Error('The ' + module + ' backup envelope is invalid.');
+      try { decoded[module] = JSON.parse(new TextDecoder().decode(gcm(key, hexToBytes(value.nonce), utf8ToBytes('Momentum recovery module ' + module + ' v1')).decrypt(hexToBytes(value.ciphertext))); } catch { throw new Error('This recovery code could not decrypt the ' + module + ' backup. Check the code and try again.'); }
+    }
+    const app = decoded.habit; if (!isAppBackup(app)) throw new Error('The habits backup is invalid.'); if (!isLoanLedgerData(decoded.loan)) throw new Error('The loans backup is invalid.'); if (!isExpenseData(decoded.expenses)) throw new Error('The expenses backup is invalid.');
+    const passwordData = decoded.passwords; if (!isRecord(passwordData) || (passwordData.passwordVault !== null && (!isRecord(passwordData.passwordVault) || (() => { try { validateVaultEnvelope(passwordData.passwordVault); return false; } catch { return true; } })())) || ![1, 5, 15].includes(passwordData.passwordVaultTimeout as number)) throw new Error('The passwords backup is invalid.');
+    if (!Array.isArray(decoded.files) || decoded.files.length > 500) throw new Error('The files backup is invalid.'); const restoredAssets: Record<string, CachedFileAsset> = {};
+    for (const entry of decoded.files) { if (!isRecord(entry) || !isManagedFile(entry.file) || typeof entry.publicId !== 'string' || !entry.publicId.startsWith('habit-tracker/backups/' + code + '/files/') || !/^[0-9a-f]{32}\\.json$/i.test(entry.publicId.slice(('habit-tracker/backups/' + code + '/files/').length)) || typeof entry.nonce !== 'string' || !/^[0-9a-f]{24}$/i.test(entry.nonce)) throw new Error('The files backup contains invalid metadata.'); const encrypted = await downloadAsset(entry.publicId); let bytes: Uint8Array; try { bytes = gcm(key, hexToBytes(entry.nonce), utf8ToBytes('Momentum recovery file ' + entry.file.id)).decrypt(encrypted); } catch { throw new Error('The backup file "' + entry.file.name + '" could not be decrypted.'); } if (bytes.byteLength !== entry.file.size) throw new Error('The backup file "' + entry.file.name + '" is incomplete.'); await restoreManagedFiles([{ file: entry.file, bytes }]); restoredAssets[entry.file.id] = { updatedAt: entry.file.updatedAt, size: entry.file.size, storedName: entry.file.storedName, publicId: entry.publicId, nonce: entry.nonce }; }
+    await restoreAllAppData({ ...app, settings: { ...DEFAULT_SETTINGS, ...app.settings } }); await Promise.all([saveLedger(decoded.loan), saveExpenses(decoded.expenses)]);
+    if (passwordData.passwordVault) await writeVaultEnvelope(passwordData.passwordVault as VaultEnvelope); else await AsyncStorage.removeItem(PASSWORD_VAULT_STORAGE_KEY); await saveVaultTimeout(passwordData.passwordVaultTimeout as number);
+    await AsyncStorage.setItem(BACKUP_SALT_PREFIX + code, index.salt); await AsyncStorage.setItem(FILE_ASSET_CACHE_PREFIX + code, JSON.stringify(restoredAssets)); await AsyncStorage.setItem(RECOVERY_CODE_KEY, code); await AsyncStorage.setItem(RECOVERY_BACKUP_READY_KEY, 'true'); await AsyncStorage.setItem(RECOVERY_RESTORED_KEY, 'true');
+  } finally { key.fill(0); }
+}
 export async function restoreWithRecoveryCode(code: string) {
   if (!CLOUD_NAME) throw new Error('Cloudinary cloud name is missing from the app environment.');
   const normalizedCode = code.trim();
   if (!RECOVERY_CODE_PATTERN.test(normalizedCode)) {
     throw new Error('Enter a valid recovery code (6–80 letters, numbers, hyphens, or underscores).');
   }
-  const fetchModule = async (module: string) => fetch(`https://res.cloudinary.com/${CLOUD_NAME}/raw/upload/habit-tracker/backups/${normalizedCode}/${module}.json?refresh=${Date.now()}`, { headers: { 'Cache-Control': 'no-cache' } });
+  const indexResponse = await fetch('https://res.cloudinary.com/' + CLOUD_NAME + '/raw/upload/habit-tracker/backups/' + encodeURIComponent(normalizedCode) + '/manifest/index.json?refresh=' + Date.now(), { headers: { 'Cache-Control': 'no-cache' } });
+  if (indexResponse.ok) { await restoreModularBackup(await indexResponse.json(), normalizedCode); return; }
+  if (indexResponse.status !== 404) throw new Error('Could not fetch the backup index. Check your internet connection and try again.');
+  const fetchModule = async (module: string) => fetch('https://res.cloudinary.com/' + CLOUD_NAME + '/raw/upload/habit-tracker/backups/' + encodeURIComponent(normalizedCode) + '/' + module + '.json?refresh=' + Date.now(), { headers: { 'Cache-Control': 'no-cache' } });
   const fullResponse = await fetchModule('full');
   if (fullResponse.ok) {
     await restoreEncryptedBackup(await fullResponse.json(), normalizedCode);
