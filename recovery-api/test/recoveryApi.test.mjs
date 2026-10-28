@@ -75,7 +75,11 @@ test('file upload signatures validate the asset identifier and return signed upl
     body: JSON.stringify({ code: 'A'.repeat(32), kind: 'manifest' }),
   }));
   assert.equal(manifestResponse.status, 200);
-  assert.equal((await manifestResponse.json()).publicId, `habit-tracker/backups/${'A'.repeat(32)}/full.json`);
+  assert.equal((await manifestResponse.json()).publicId, `habit-tracker/backups/${'A'.repeat(32)}/manifest/index.json`);
+
+  const moduleResponse = await handleRecoveryRequest(makeRequest('/api/recovery/upload-signature', { method: 'POST', body: JSON.stringify({ code: 'A'.repeat(32), kind: 'module', module: 'passwords' }) }));
+  assert.equal(moduleResponse.status, 200);
+  assert.equal((await moduleResponse.json()).publicId, `habit-tracker/backups/${'A'.repeat(32)}/passwords/data.json`);
 });
 
 test('unknown methods and routes return explicit client errors', async () => {
