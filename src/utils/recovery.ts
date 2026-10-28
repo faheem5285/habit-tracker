@@ -407,7 +407,7 @@ async function restoreEncryptedBackup(envelopeValue: unknown, code: string) {
 }
 
 async function restoreModularBackup(indexValue: unknown, code: string) {
-  if (!isRecord(indexValue) || indexValue.format !== 'momentum.backup-index' || indexValue.version !== 1 || typeof indexValue.salt !== 'string' || !/^[0-9a-f]{32}$/i.test(indexValue.salt) || !Array.isArray(indexValue.modules) || !indexValue.modules.every((m) => ['habit', 'passwords', 'loan', 'expenses', 'files'].includes(String(m)))) throw new Error('The modular recovery index is invalid.');
+  if (!isRecord(indexValue) || indexValue.format !== 'momentum.backup-index' || indexValue.version !== 1 || typeof indexValue.salt !== 'string' || !/^[0-9a-f]{32}$/i.test(indexValue.salt) || typeof indexValue.iterations !== 'number' || !Number.isInteger(indexValue.iterations) || indexValue.iterations < 1 || indexValue.iterations > 2_000_000 || !Array.isArray(indexValue.modules) || indexValue.modules.length !== 5 || !['habit', 'passwords', 'loan', 'expenses', 'files'].every((m) => indexValue.modules.includes(m))) throw new Error('The modular recovery index is invalid.');
   const index = indexValue as unknown as ModularBackupIndex; const { key } = await backupKey(code, index.salt, index.iterations);
   try { const decoded: Partial<Record<BackupModule, unknown>> = {};
     for (const module of index.modules) { const url = 'https://res.cloudinary.com/' + CLOUD_NAME + '/raw/upload/habit-tracker/backups/' + encodeURIComponent(code) + '/' + module + '/data.json?refresh=' + Date.now(); const response = await fetch(url, { headers: { 'Cache-Control': 'no-cache' } }); if (!response.ok) throw new Error('Could not fetch the ' + module + ' backup.'); const value: unknown = await response.json();
